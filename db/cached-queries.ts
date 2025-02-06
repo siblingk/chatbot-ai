@@ -1,4 +1,4 @@
-import 'server-only';
+'server-only';
 
 import { cache } from 'react';
 import { unstable_cache } from 'next/cache';
