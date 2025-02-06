@@ -24,14 +24,14 @@ import { Textarea } from '../ui/textarea';
 
 const suggestedActions = [
   {
-    title: 'Mi carro hace ruidos',
-    label: 'al frenar',
-    action: 'Mi carro hace ruidos extraños al frenar, ¿qué podría ser?',
+    title: 'My car makes noises',
+    label: 'when braking',
+    action: 'My car makes strange noises when braking, what could it be?',
   },
   {
-    title: 'Necesito una afinación',
-    label: 'para mi vehículo',
-    action: 'Necesito una afinación para mi vehículo, ¿qué me recomiendan?',
+    title: 'I need a tune-up',
+    label: 'for my vehicle',
+    action: 'I need a tune-up for my vehicle, what do you recommend?',
   },
 ];
 
@@ -262,7 +262,7 @@ export function MultimodalInput({
 
       <Textarea
         ref={textareaRef}
-        placeholder="Describe el problema de tu vehículo o el servicio que necesitas..."
+        placeholder="Describe your vehicle's problem or the service you need..."
         value={input}
         onChange={handleInput}
         className={cx(
