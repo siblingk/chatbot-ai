@@ -454,36 +454,54 @@ export async function POST(request: Request) {
           },
         },
       },
-      onFinish: async ({ responseMessages }) => {
+      onFinish: async ({ responseMessages }: any) => {
         if (user && user.id) {
-          try {
-            const responseMessagesWithoutIncompleteToolCalls =
-              sanitizeResponseMessages(responseMessages);
+          let retryCount = 0;
+          const maxRetries = 3;
 
-            await saveMessages({
-              chatId: id,
-              messages: responseMessagesWithoutIncompleteToolCalls.map(
-                (message) => {
-                  const messageId = generateUUID();
+          while (retryCount < maxRetries) {
+            try {
+              const responseMessagesWithoutIncompleteToolCalls =
+                sanitizeResponseMessages(responseMessages);
 
-                  if (message.role === 'assistant') {
-                    streamingData.appendMessageAnnotation({
-                      messageIdFromServer: messageId,
-                    });
+              await saveMessages({
+                chatId: id,
+                messages: responseMessagesWithoutIncompleteToolCalls.map(
+                  (message) => {
+                    const messageId = generateUUID();
+
+                    if (message.role === 'assistant') {
+                      streamingData.appendMessageAnnotation({
+                        messageIdFromServer: messageId,
+                      });
+                    }
+
+                    return {
+                      id: messageId,
+                      chat_id: id,
+                      role: message.role as MessageRole,
+                      content: formatMessageContent(message),
+                      created_at: new Date().toISOString(),
+                    };
                   }
-
-                  return {
-                    id: messageId,
-                    chat_id: id,
-                    role: message.role as MessageRole,
-                    content: formatMessageContent(message),
-                    created_at: new Date().toISOString(),
-                  };
-                }
-              ),
-            });
-          } catch (error) {
-            console.error('Failed to save chat:', error);
+                ),
+              });
+              break; // If successful, exit the retry loop
+            } catch (error) {
+              console.error(
+                `Failed to save chat (attempt ${retryCount + 1}):`,
+                error
+              );
+              retryCount++;
+              if (retryCount === maxRetries) {
+                console.error('Failed to save chat after maximum retries');
+              } else {
+                // Wait before retrying, with exponential backoff
+                await new Promise((resolve) =>
+                  setTimeout(resolve, 1000 * Math.pow(2, retryCount))
+                );
+              }
+            }
           }
         }
 
