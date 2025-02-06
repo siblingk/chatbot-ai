@@ -24,14 +24,14 @@ import { Textarea } from '../ui/textarea';
 
 const suggestedActions = [
   {
-    title: 'What is the weather',
-    label: 'in San Francisco?',
-    action: 'What is the weather in San Francisco?',
+    title: 'Mi carro hace ruidos',
+    label: 'al frenar',
+    action: 'Mi carro hace ruidos extraños al frenar, ¿qué podría ser?',
   },
   {
-    title: 'Help me draft an essay',
-    label: 'about Silicon Valley',
-    action: 'Help me draft a short essay about Silicon Valley',
+    title: 'Necesito una afinación',
+    label: 'para mi vehículo',
+    action: 'Necesito una afinación para mi vehículo, ¿qué me recomiendan?',
   },
 ];
 
@@ -262,7 +262,7 @@ export function MultimodalInput({
 
       <Textarea
         ref={textareaRef}
-        placeholder="Send a message..."
+        placeholder="Describe el problema de tu vehículo o el servicio que necesitas..."
         value={input}
         onChange={handleInput}
         className={cx(

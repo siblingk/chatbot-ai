@@ -1,7 +1,6 @@
 import { motion } from 'framer-motion';
+import { Car } from 'lucide-react';
 import Link from 'next/link';
-
-import { MessageIcon, SupabaseIcon, VercelIcon } from './icons';
 
 export const Overview = () => {
   return (
@@ -15,55 +14,19 @@ export const Overview = () => {
     >
       <div className="rounded-xl p-6 flex flex-col gap-8 leading-relaxed text-center max-w-xl">
         <p className="flex flex-row justify-center gap-4 items-center">
-          <VercelIcon size={32} />
-          <span>+</span>
-          <SupabaseIcon />
-          <span>+</span>
-          <MessageIcon size={32} />
+          <Car size={32} />
         </p>
+        <h2 className="text-2xl font-bold">¡Bienvenido a Siblingk!</h2>
         <p>
-          This is an{' '}
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://github.com/vercel/ai-chatbot"
-            target="_blank"
-          >
-            open source
-          </Link>{' '}
-          chatbot template built with Next.js, the AI SDK by Vercel, and
-          Supabase. It uses the{' '}
-          <code className="rounded-md bg-muted px-1 py-0.5">streamText</code>{' '}
-          function in the server and the{' '}
-          <code className="rounded-md bg-muted px-1 py-0.5">useChat</code> hook
-          on the client to create a seamless chat experience, with{' '}
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://supabase.com"
-            target="_blank"
-          >
-            Supabase
-          </Link>{' '}
-          providing real-time data storage and authentication.
+          Tu asistente virtual para encontrar el mejor taller mecánico para tu
+          vehículo. Usando tecnología de IA avanzada, te ayudamos a:
         </p>
-        <p>
-          Learn more about the{' '}
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://sdk.vercel.ai/docs"
-            target="_blank"
-          >
-            AI SDK
-          </Link>{' '}
-          and{' '}
-          <Link
-            className="font-medium underline underline-offset-4"
-            href="https://supabase.com/docs"
-            target="_blank"
-          >
-            Supabase
-          </Link>{' '}
-          in their respective documentation.
-        </p>
+        <ul className="list-disc list-inside text-left space-y-2 mx-auto">
+          <li>Diagnosticar problemas de tu vehículo</li>
+          <li>Encontrar talleres especializados</li>
+          <li>Obtener cotizaciones de servicios</li>
+          <li>Agendar citas con talleres</li>
+        </ul>
       </div>
     </motion.div>
   );
