@@ -329,6 +329,19 @@ type PostgrestError = {
   hint: string | null;
 };
 
+export async function getAdminUsersQuery(client: Client) {
+  const { data: users, error } = await client
+    .from('users')
+    .select()
+    .eq('role', 'admin');
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return users;
+}
+
 export function handleSupabaseError(error: PostgrestError | null) {
   if (!error) return null;
 
