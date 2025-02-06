@@ -8,18 +8,16 @@ const supabase = createClient(
 export type UserRole = 'user' | 'admin';
 
 export const isAdmin = async (): Promise<boolean> => {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return false;
+  try {
+    const { data, error } = await supabase
+      .rpc('is_admin');
 
-  const { data, error } = await supabase
-    .rpc('is_admin');
-
-  if (error) {
+    if (error) throw error;
+    return data || false;
+  } catch (error) {
     console.error('Error checking admin status:', error);
     return false;
   }
-
-  return data || false;
 };
 
 export const setUserRole = async (userId: string, role: UserRole): Promise<boolean> => {
@@ -41,8 +39,7 @@ export const setUserRole = async (userId: string, role: UserRole): Promise<boole
 export const listUsers = async () => {
   try {
     const { data, error } = await supabase
-      .from('users_with_roles')
-      .select('*');
+      .rpc('get_users_with_roles');
 
     if (error) throw error;
     return data;
