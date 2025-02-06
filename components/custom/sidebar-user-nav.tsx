@@ -5,6 +5,7 @@ import { ChevronUp } from 'lucide-react';
 import Image from 'next/image';
 import { useTheme } from 'next-themes';
 
+import { AdminBadge } from '@/components/admin-badge';
 import { LogoutButton } from '@/components/custom/logout-button';
 import {
   DropdownMenu,
@@ -35,7 +36,10 @@ export function SidebarUserNav({ user }: { user: User }) {
                 height={24}
                 className="rounded-full"
               />
-              <span className="truncate">{user?.email}</span>
+              <div className="flex items-center gap-2">
+                <span className="truncate">{user?.email}</span>
+                <AdminBadge />
+              </div>
               <ChevronUp className="ml-auto" />
             </SidebarMenuButton>
           </DropdownMenuTrigger>

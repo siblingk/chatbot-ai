@@ -216,22 +216,25 @@ export type Database = {
       };
       users: {
         Row: {
-          created_at: string;
-          email: string;
           id: string;
+          email: string;
+          created_at: string;
           updated_at: string;
+          role: 'user' | 'admin';
         };
         Insert: {
-          created_at?: string;
-          email: string;
           id?: string;
+          email: string;
+          created_at?: string;
           updated_at?: string;
+          role?: 'user' | 'admin';
         };
         Update: {
-          created_at?: string;
-          email?: string;
           id?: string;
+          email?: string;
+          created_at?: string;
           updated_at?: string;
+          role?: 'user' | 'admin';
         };
         Relationships: [];
       };

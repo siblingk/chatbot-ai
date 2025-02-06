@@ -351,3 +351,18 @@ export function handleSupabaseError(error: PostgrestError | null) {
 
   throw error;
 }
+
+export type UserRole = 'user' | 'admin';
+
+export async function getUserRole(client: Client): Promise<UserRole> {
+  const { data: user, error } = await client
+    .from('users')
+    .select('role')
+    .single();
+
+  if (error) {
+    throw handleSupabaseError(error);
+  }
+
+  return (user?.role as UserRole) || 'user';
+}

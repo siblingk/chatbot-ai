@@ -5,17 +5,21 @@ import { unstable_cache } from 'next/cache';
 
 import { createClient } from '@/lib/supabase/server';
 import {
-  getChatByIdQuery,
-  getUserQuery,
+  getAdminUsersQuery,
+  getChatMessagesQuery,
   getChatsByUserIdQuery,
+  getChatWithMessagesQuery,
+  getUserByIdQuery,
+  getUserQuery,
+  getUserRole as getUserRoleQuery,
+  type UserRole,
+  getChatByIdQuery,
   getMessagesByChatIdQuery,
   getVotesByChatIdQuery,
   getDocumentByIdQuery,
   getDocumentsByIdQuery,
   getSuggestionsByDocumentIdQuery,
   getSessionQuery,
-  getUserByIdQuery,
-  getChatWithMessagesQuery,
 } from '@/db/queries';
 
 const getSupabase = cache(() => createClient());
@@ -184,6 +188,21 @@ export const getChatWithMessages = async (chatId: string) => {
     {
       tags: [`chat_${chatId}`, `chat_${chatId}_messages`],
       revalidate: 10, // Cache for 10 seconds
+    }
+  )();
+};
+
+export const getUserRole = async (): Promise<UserRole> => {
+  const supabase = await getSupabase();
+
+  return unstable_cache(
+    async () => {
+      return getUserRoleQuery(supabase);
+    },
+    ['user-role'],
+    {
+      tags: ['user-role'],
+      revalidate: 60, // Cache for 1 minute
     }
   )();
 };
