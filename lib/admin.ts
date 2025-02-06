@@ -1,0 +1,53 @@
+import { createClient } from '@supabase/supabase-js';
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
+
+export type UserRole = 'user' | 'admin';
+
+export const isAdmin = async (): Promise<boolean> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { data, error } = await supabase
+    .rpc('is_admin');
+
+  if (error) {
+    console.error('Error checking admin status:', error);
+    return false;
+  }
+
+  return data || false;
+};
+
+export const setUserRole = async (userId: string, role: UserRole): Promise<boolean> => {
+  try {
+    const { error } = await supabase
+      .rpc('set_user_role', {
+        user_id: userId,
+        new_role: role
+      });
+
+    if (error) throw error;
+    return true;
+  } catch (error) {
+    console.error('Error setting user role:', error);
+    return false;
+  }
+};
+
+export const listUsers = async () => {
+  try {
+    const { data, error } = await supabase
+      .from('users_with_roles')
+      .select('*');
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Error listing users:', error);
+    return null;
+  }
+};
