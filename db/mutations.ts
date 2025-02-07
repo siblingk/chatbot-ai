@@ -77,38 +77,76 @@ export async function saveMessages({
   await mutateQuery(
     async (client, { chatId, messages }) => {
       const formattedMessages = messages.map((message) => {
-        // Handle tool invocations and content
-        let content = message.content;
+        // Inicializar el contenido base
+        let content: any = message.content;
 
-        // If message has tool invocations, save them as part of the content
-        if (message?.toolInvocations && message?.toolInvocations?.length > 0) {
-          content = JSON.stringify({
-            content: message.content,
-            toolInvocations: message.toolInvocations,
-          });
-        } else if (typeof content === 'object') {
-          content = JSON.stringify(content);
-        }
+        try {
+          // Si el contenido ya es un objeto, usarlo directamente
+          if (typeof content === 'object' && content !== null) {
+            // No necesita parsing
+          }
+          // Si es un string que parece JSON, intentar parsearlo
+          else if (
+            typeof content === 'string' &&
+            (content.startsWith('{') || content.startsWith('['))
+          ) {
+            try {
+              content = JSON.parse(content);
+            } catch {
+              // Si falla el parsing, mantenerlo como string
+              content = { text: content };
+            }
+          }
+          // Para strings simples, convertirlo a objeto
+          else if (typeof content === 'string') {
+            content = { text: content };
+          }
 
-        // Handle annotations if present
-        if (message.annotations && message.annotations?.length > 0) {
-          content = JSON.stringify({
+          // Agregar tool invocations si existen
+          if (
+            message?.toolInvocations &&
+            Array.isArray(message.toolInvocations) &&
+            message.toolInvocations.length > 0
+          ) {
+            content = {
+              ...content,
+              toolInvocations: message.toolInvocations,
+            };
+          }
+
+          // Agregar annotations si existen
+          if (
+            message?.annotations &&
+            Array.isArray(message.annotations) &&
+            message.annotations.length > 0
+          ) {
+            content = {
+              ...content,
+              annotations: message.annotations,
+            };
+          }
+
+          return {
+            id: message.id,
+            chat_id: chatId,
+            role: message.role,
             content: content,
-            annotations: message.annotations,
-          });
+            created_at: message.created_at || new Date().toISOString(),
+          };
+        } catch (err) {
+          console.error('Error formatting message:', err);
+          throw new Error(
+            `Failed to format message: ${err instanceof Error ? err.message : 'Unknown error'}`
+          );
         }
-
-        return {
-          id: message.id,
-          chat_id: chatId,
-          role: message.role,
-          content: content,
-          created_at: message.created_at || new Date().toISOString(),
-        };
       });
 
       const { error } = await client.from('messages').insert(formattedMessages);
-      if (error) throw error;
+
+      if (error) {
+        console.error('Database error in saveMessages:', error);
+        throw error;
+      }
     },
     [{ chatId, messages }],
     [`chat_${chatId}_messages`, `chat_${chatId}`]

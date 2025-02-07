@@ -115,24 +115,70 @@ export function MultimodalInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadQueue, setUploadQueue] = useState<Array<string>>([]);
 
-  const submitForm = useCallback(() => {
-    window.history.replaceState({}, '', `/chat/${chatId}`);
+  const submitForm = useCallback(async () => {
+    try {
+      // Validar que haya contenido
+      if (!input.trim()) {
+        toast.error('Por favor ingresa un mensaje');
+        return;
+      }
 
-    handleSubmit(undefined, {
-      experimental_attachments: attachments,
-    });
+      // Actualizar la URL
+      window.history.replaceState({}, '', `/chat/${chatId}`);
 
-    setAttachments([]);
-    setLocalStorageInput('');
+      // Crear el evento sintético
+      const syntheticEvent = {
+        preventDefault: () => {},
+      };
 
-    if (width && width > 768) {
-      textareaRef.current?.focus();
+      // Llamar handleSubmit con el evento y las opciones
+      try {
+        await handleSubmit(syntheticEvent, {
+          experimental_attachments: attachments,
+        });
+
+        // Limpiar el formulario solo si el envío fue exitoso
+        setAttachments([]);
+        setLocalStorageInput('');
+        setInput('');
+
+        if (width && width > 768) {
+          textareaRef.current?.focus();
+        }
+      } catch (error) {
+        // Intentar obtener el mensaje de error del servidor
+        let errorMessage = 'Error al enviar el mensaje';
+
+        if (error instanceof Error) {
+          errorMessage = error.message;
+        } else if (error instanceof Response) {
+          try {
+            const data = await error.json();
+            errorMessage = data.details || data.error || errorMessage;
+          } catch {
+            // Si no podemos parsear la respuesta, usar el mensaje genérico
+          }
+        }
+
+        console.error('Error en el envío:', error);
+        toast.error(errorMessage);
+
+        // Re-habilitar el input
+        if (textareaRef.current) {
+          textareaRef.current.disabled = false;
+        }
+      }
+    } catch (error) {
+      console.error('Error general:', error);
+      toast.error('Error inesperado. Por favor intenta de nuevo.');
     }
   }, [
+    input,
     attachments,
     handleSubmit,
     setAttachments,
     setLocalStorageInput,
+    setInput,
     width,
     chatId,
   ]);
@@ -195,11 +241,11 @@ export function MultimodalInput({
   );
 
   return (
-    <div className="relative w-full flex flex-col gap-4">
+    <div className="relative flex w-full flex-col gap-4">
       {messages.length === 0 &&
         attachments.length === 0 &&
         uploadQueue.length === 0 && (
-          <div className="grid sm:grid-cols-2 gap-2 w-full">
+          <div className="grid w-full gap-2 sm:grid-cols-2">
             {suggestedActions.map((suggestedAction, index) => (
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
@@ -219,7 +265,7 @@ export function MultimodalInput({
                       content: suggestedAction.action,
                     });
                   }}
-                  className="text-left border rounded-xl px-4 py-3.5 text-sm flex-1 gap-1 sm:flex-col w-full h-auto justify-start items-start"
+                  className="h-auto w-full flex-1 items-start justify-start gap-1 rounded-xl border px-4 py-3.5 text-left text-sm sm:flex-col"
                 >
                   <span className="font-medium">{suggestedAction.title}</span>
                   <span className="text-muted-foreground">
@@ -233,7 +279,7 @@ export function MultimodalInput({
 
       <input
         type="file"
-        className="fixed -top-4 -left-4 size-0.5 opacity-0 pointer-events-none"
+        className="pointer-events-none fixed -left-4 -top-4 size-0.5 opacity-0"
         ref={fileInputRef}
         multiple
         onChange={handleFileChange}
@@ -241,7 +287,7 @@ export function MultimodalInput({
       />
 
       {(attachments.length > 0 || uploadQueue.length > 0) && (
-        <div className="flex flex-row gap-2 overflow-x-scroll items-end">
+        <div className="flex flex-row items-end gap-2 overflow-x-scroll">
           {attachments.map((attachment) => (
             <PreviewAttachment key={attachment.url} attachment={attachment} />
           ))}
@@ -271,14 +317,29 @@ export function MultimodalInput({
         )}
         rows={3}
         autoFocus
-        onKeyDown={(event) => {
+        onKeyDown={async (event) => {
           if (event.key === 'Enter' && !event.shiftKey) {
             event.preventDefault();
 
             if (isLoading) {
-              toast.error('Please wait for the model to finish its response!');
-            } else {
-              submitForm();
+              toast.error(
+                'Por favor espera a que el modelo termine su respuesta.'
+              );
+              return;
+            }
+
+            if (!input.trim()) {
+              toast.error('Por favor ingresa un mensaje');
+              return;
+            }
+
+            try {
+              await submitForm();
+            } catch (error) {
+              console.error('Error al enviar mensaje:', error);
+              toast.error(
+                'Error al enviar el mensaje. Por favor intenta de nuevo.'
+              );
             }
           }
         }}
@@ -286,7 +347,7 @@ export function MultimodalInput({
 
       {isLoading ? (
         <Button
-          className="rounded-full p-1.5 h-fit absolute bottom-2 right-2 m-0.5 border dark:border-zinc-600"
+          className="absolute bottom-2 right-2 m-0.5 h-fit rounded-full border p-1.5 dark:border-zinc-600"
           onClick={(event) => {
             event.preventDefault();
             stop();
@@ -297,19 +358,30 @@ export function MultimodalInput({
         </Button>
       ) : (
         <Button
-          className="rounded-full p-1.5 h-fit absolute bottom-2 right-2 m-0.5 border dark:border-zinc-600"
-          onClick={(event) => {
+          className="absolute bottom-2 right-2 m-0.5 h-fit rounded-full border p-1.5 dark:border-zinc-600"
+          onClick={async (event) => {
             event.preventDefault();
-            submitForm();
+            if (!input.trim()) {
+              toast.error('Por favor ingresa un mensaje');
+              return;
+            }
+            try {
+              await submitForm();
+            } catch (error) {
+              console.error('Error al enviar mensaje:', error);
+              toast.error(
+                'Error al enviar el mensaje. Por favor intenta de nuevo.'
+              );
+            }
           }}
-          disabled={input.length === 0 || uploadQueue.length > 0}
+          disabled={!input.trim() || uploadQueue.length > 0}
         >
           <ArrowUpIcon size={14} />
         </Button>
       )}
 
       <Button
-        className="rounded-full p-1.5 h-fit absolute bottom-2 right-11 m-0.5 dark:border-zinc-700"
+        className="absolute bottom-2 right-11 m-0.5 h-fit rounded-full p-1.5 dark:border-zinc-700"
         onClick={(event) => {
           event.preventDefault();
           fileInputRef.current?.click();
