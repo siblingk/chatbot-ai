@@ -1,46 +1,72 @@
-import { Suspense } from 'react';
+'use client';
+
+import { useEffect, useState } from 'react';
 import {
   Bot,
   BrainCircuit,
   FileJson,
   MessageSquare,
   Shield,
-  Users,
 } from 'lucide-react';
 
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Switch } from '@/components/ui/switch';
-import { getAdminUsersQuery } from '@/db/queries';
-import { createClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
+import { AdminStats } from './components/admin-stats';
+import { PromptForm } from './components/prompt-form';
+import { PromptsList } from './components/prompts-list';
 
-async function UsersStats() {
-  const supabase = await createClient();
-  const adminUsers = await getAdminUsersQuery(supabase);
-
-  return (
-    <div className="flex items-center gap-2">
-      <div className="text-2xl font-bold">{adminUsers.length}</div>
-      <div className="text-sm text-muted-foreground">
-        Administradores en el sistema
-      </div>
-    </div>
-  );
-}
-
-function StatsLoading() {
-  return (
-    <div className="flex items-center gap-2">
-      <Skeleton className="h-8 w-[50px]" />
-      <Skeleton className="h-4 w-[200px]" />
-    </div>
-  );
+interface Prompt {
+  id: string;
+  name: string;
+  content: string;
+  is_default: boolean;
+  created_at: string;
+  updated_at: string;
 }
 
 export default function ConfigPage() {
+  const [editingPrompt, setEditingPrompt] = useState<Prompt | undefined>();
+  const [isPromptFormOpen, setIsPromptFormOpen] = useState(false);
+  const [prompts, setPrompts] = useState<Prompt[]>([]);
+
+  useEffect(() => {
+    const fetchPrompts = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.rpc('get_user_prompts');
+      if (data) {
+        setPrompts(data);
+      }
+    };
+
+    fetchPrompts();
+  }, []);
+
+  const handleEditPrompt = (prompt: Prompt) => {
+    setEditingPrompt(prompt);
+    setIsPromptFormOpen(true);
+  };
+
+  const handlePromptFormSuccess = async () => {
+    const supabase = createClient();
+    const { data } = await supabase.rpc('get_user_prompts');
+    if (data) {
+      setPrompts(data);
+    }
+  };
+
   return (
     <div className="space-y-12">
+      {/* Sección de Prompts */}
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <FileJson className="h-5 w-5" />
+          <h2 className="text-lg font-semibold">Prompts</h2>
+        </div>
+        <PromptsList initialPrompts={prompts} onEdit={handleEditPrompt} />
+      </section>
+
       {/* Sección de Estadísticas */}
       <section>
         <div className="mb-4 flex items-center gap-2">
@@ -49,9 +75,7 @@ export default function ConfigPage() {
         </div>
         <Card>
           <CardContent className="pt-6">
-            <Suspense fallback={<StatsLoading />}>
-              <UsersStats />
-            </Suspense>
+            <AdminStats />
           </CardContent>
         </Card>
       </section>
@@ -148,6 +172,13 @@ export default function ConfigPage() {
           </CardContent>
         </Card>
       </section>
+
+      <PromptForm
+        prompt={editingPrompt}
+        open={isPromptFormOpen}
+        onOpenChange={setIsPromptFormOpen}
+        onSuccess={handlePromptFormSuccess}
+      />
     </div>
   );
 }
