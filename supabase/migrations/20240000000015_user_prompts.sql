@@ -1,3 +1,6 @@
+-- Drop table if exists (to avoid conflicts)
+DROP TABLE IF EXISTS public.prompts;
+
 -- Create Prompts table
 CREATE TABLE IF NOT EXISTS public.prompts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -12,6 +15,12 @@ CREATE TABLE IF NOT EXISTS public.prompts (
 -- Enable RLS
 ALTER TABLE public.prompts ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users can view own prompts" ON public.prompts;
+DROP POLICY IF EXISTS "Users can create own prompts" ON public.prompts;
+DROP POLICY IF EXISTS "Users can update own prompts" ON public.prompts;
+DROP POLICY IF EXISTS "Users can delete own prompts" ON public.prompts;
+
 -- Create RLS policies
 CREATE POLICY "Users can view own prompts" ON public.prompts
     FOR SELECT USING (auth.uid() = user_id);
@@ -24,6 +33,9 @@ CREATE POLICY "Users can update own prompts" ON public.prompts
 
 CREATE POLICY "Users can delete own prompts" ON public.prompts
     FOR DELETE USING (auth.uid() = user_id);
+
+-- Drop function if exists
+DROP FUNCTION IF EXISTS get_user_prompts();
 
 -- Create function to get user's prompts
 CREATE OR REPLACE FUNCTION get_user_prompts()

@@ -1,3 +1,6 @@
+-- Drop function if exists
+DROP FUNCTION IF EXISTS get_admin_count();
+
 -- Create function to count admin users
 CREATE OR REPLACE FUNCTION get_admin_count()
 RETURNS integer
