@@ -1,8 +1,9 @@
 'use client';
 
 import { User } from '@supabase/supabase-js';
-import { ChevronUp } from 'lucide-react';
+import { Moon, Settings, Sun } from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
 import { useTheme } from 'next-themes';
 
 import { AdminBadge } from '@/components/admin-badge';
@@ -19,9 +20,12 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { useIsAdmin } from '@/hooks/use-is-admin';
+import { Button } from '@/components/ui/button';
 
 export function SidebarUserNav({ user }: { user: User }) {
   const { setTheme, theme } = useTheme();
+  const { isAdmin } = useIsAdmin();
 
   return (
     <SidebarMenu>
@@ -49,11 +53,36 @@ export function SidebarUserNav({ user }: { user: User }) {
             side="top"
             className="w-[--radix-popper-anchor-width]"
           >
-            <DropdownMenuItem
-              className="cursor-pointer"
-              onSelect={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            >
-              {`Toggle ${theme === 'light' ? 'dark' : 'light'} mode`}
+            {isAdmin && (
+              <>
+                <DropdownMenuItem asChild>
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start gap-2"
+                    asChild
+                  >
+                    <Link href="/config">
+                      <Settings className="size-4" />
+                      <span>Configuración</span>
+                    </Link>
+                  </Button>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem asChild>
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              >
+                {theme === 'light' ? (
+                  <Moon className="size-4" />
+                ) : (
+                  <Sun className="size-4" />
+                )}
+                <span>{theme === 'light' ? 'Modo oscuro' : 'Modo claro'}</span>
+              </Button>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <LogoutButton />

@@ -1,9 +1,11 @@
 'use client';
 
+import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 
 import { Button } from '@/components/ui/button';
+import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { signOut } from '@/db/auth';
 
 export function LogoutButton() {
@@ -20,8 +22,15 @@ export function LogoutButton() {
   }
 
   return (
-    <Button variant="ghost" onClick={handleLogout}>
-      Logout
-    </Button>
+    <DropdownMenuItem asChild>
+      <Button
+        variant="ghost"
+        className="w-full justify-start gap-2"
+        onClick={handleLogout}
+      >
+        <LogOut className="size-4" />
+        <span>Cerrar sesión</span>
+      </Button>
+    </DropdownMenuItem>
   );
 }
