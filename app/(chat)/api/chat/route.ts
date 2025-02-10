@@ -63,50 +63,51 @@ async function getUser() {
 
 // Add helper function to format message content for database storage
 function formatMessageContent(message: CoreMessage): string {
-  // For user messages, store as plain text
+  // Para mensajes del usuario
   if (message.role === 'user') {
-    return typeof message.content === 'string'
-      ? message.content
-      : JSON.stringify(message.content);
-  }
-
-  // For tool messages, format as array of tool results
-  if (message.role === 'tool') {
-    return JSON.stringify(
-      message.content.map((content) => ({
-        type: content.type || 'tool-result',
-        toolCallId: content.toolCallId,
-        toolName: content.toolName,
-        result: content.result,
-      }))
-    );
-  }
-
-  // For assistant messages, format as array of text and tool calls
-  if (message.role === 'assistant') {
-    if (typeof message.content === 'string') {
-      return JSON.stringify([{ type: 'text', text: message.content }]);
+    const content = message.content;
+    // Si es un objeto o array, convertirlo a string
+    if (typeof content === 'object' && content !== null) {
+      return typeof content.text === 'string'
+        ? content.text
+        : JSON.stringify(content);
     }
-
-    return JSON.stringify(
-      message.content.map((content) => {
-        if (content.type === 'text') {
-          return {
-            type: 'text',
-            text: content.text,
-          };
-        }
-        return {
-          type: 'tool-call',
-          toolCallId: content.toolCallId,
-          toolName: content.toolName,
-          args: content.args,
-        };
-      })
-    );
+    // Si es string o cualquier otro tipo, convertirlo a string
+    return String(content);
   }
 
-  return '';
+  // Para mensajes de herramientas
+  if (message.role === 'tool') {
+    return message.content
+      .map(
+        (content) => `${content.toolName}: ${JSON.stringify(content.result)}`
+      )
+      .join('\n');
+  }
+
+  // Para mensajes del asistente
+  if (message.role === 'assistant') {
+    const content = message.content;
+    // Si ya es string, retornarlo directamente
+    if (typeof content === 'string') {
+      return content;
+    }
+    // Si es array, concatenar los textos
+    if (Array.isArray(content)) {
+      return content
+        .map((item) => {
+          if ('text' in item) return item.text;
+          if ('toolCallId' in item) return `[${item.toolName}]`;
+          return JSON.stringify(item);
+        })
+        .join('\n');
+    }
+    // Si es objeto, convertirlo a string
+    return JSON.stringify(content);
+  }
+
+  // Para cualquier otro caso
+  return String(message.content);
 }
 
 export async function POST(request: Request) {

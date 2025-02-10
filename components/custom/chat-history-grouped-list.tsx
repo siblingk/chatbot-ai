@@ -16,8 +16,6 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
   SidebarMenuItem,
 } from '@/components/ui/sidebar';
 import { Chat } from '@/lib/supabase/types';
@@ -35,7 +33,7 @@ type GroupedChats = {
 // Memoized group header
 const GroupHeader = memo(function GroupHeader({ title }: { title: string }) {
   return (
-    <div className="px-2 py-1 text-xs text-sidebar-foreground/50 mt-6 first:mt-0">
+    <div className="mt-6 px-2 py-1 text-xs text-sidebar-foreground/50 first:mt-0">
       {title}
     </div>
   );
@@ -54,32 +52,27 @@ const ChatItem = memo(function ChatItem({
   setOpenMobile: (open: boolean) => void;
 }) {
   return (
-    <SidebarMenuItem>
-      <SidebarMenuButton asChild isActive={isActive}>
-        <Link href={`/chat/${chat.id}`} onClick={() => setOpenMobile(false)}>
-          <span>{chat.title || 'New Chat'}</span>
-        </Link>
-      </SidebarMenuButton>
-      <DropdownMenu modal={true}>
-        <DropdownMenuTrigger asChild>
-          <SidebarMenuAction
-            className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground mr-0.5"
-            showOnHover={!isActive}
-          >
-            <MoreHorizontalIcon />
-            <span className="sr-only">More</span>
-          </SidebarMenuAction>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent side="bottom" align="end">
-          <DropdownMenuItem
-            className="cursor-pointer text-destructive focus:bg-destructive/15 focus:text-destructive dark:text-red-500"
-            onSelect={() => onDelete(chat.id)}
-          >
-            <TrashIcon />
-            <span>Delete</span>
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <SidebarMenuItem className={isActive ? 'bg-sidebar-accent' : ''}>
+      <Link
+        href={`/chat/${chat.id}`}
+        onClick={() => setOpenMobile(false)}
+        className="flex w-full items-center justify-between"
+      >
+        <span className="truncate">{chat.title || 'Nueva conversación'}</span>
+        <DropdownMenu>
+          <DropdownMenuTrigger>
+            <button className="rounded-md p-1 hover:bg-sidebar-accent">
+              <MoreHorizontalIcon />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem onClick={() => onDelete(chat.id)}>
+              <TrashIcon />
+              <span>Eliminar chat</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </Link>
     </SidebarMenuItem>
   );
 });

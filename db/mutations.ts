@@ -77,79 +77,57 @@ export async function saveMessages({
   await mutateQuery(
     async (client, { chatId, messages }) => {
       const formattedMessages = messages.map((message) => {
-        // Inicializar el contenido base
-        let content: any = message.content;
+        let content = message.content;
 
-        try {
-          // Si el contenido ya es un objeto, usarlo directamente
-          if (typeof content === 'object' && content !== null) {
-            // No necesita parsing
+        // Si el contenido es un objeto o array, convertirlo a formato de texto
+        if (typeof content === 'object' && content !== null) {
+          if (Array.isArray(content)) {
+            content = JSON.stringify(content);
+          } else {
+            content = JSON.stringify([
+              { type: 'text', text: JSON.stringify(content) },
+            ]);
           }
-          // Si es un string que parece JSON, intentar parsearlo
-          else if (
-            typeof content === 'string' &&
-            (content.startsWith('{') || content.startsWith('['))
-          ) {
-            try {
-              content = JSON.parse(content);
-            } catch {
-              // Si falla el parsing, mantenerlo como string
-              content = { text: content };
-            }
-          }
-          // Para strings simples, convertirlo a objeto
-          else if (typeof content === 'string') {
-            content = { text: content };
-          }
-
-          // Agregar tool invocations si existen
-          if (
-            message?.toolInvocations &&
-            Array.isArray(message.toolInvocations) &&
-            message.toolInvocations.length > 0
-          ) {
-            content = {
-              ...content,
-              toolInvocations: message.toolInvocations,
-            };
-          }
-
-          // Agregar annotations si existen
-          if (
-            message?.annotations &&
-            Array.isArray(message.annotations) &&
-            message.annotations.length > 0
-          ) {
-            content = {
-              ...content,
-              annotations: message.annotations,
-            };
-          }
-
-          return {
-            id: message.id,
-            chat_id: chatId,
-            role: message.role,
-            content: content,
-            created_at: message.created_at || new Date().toISOString(),
-          };
-        } catch (err) {
-          console.error('Error formatting message:', err);
-          throw new Error(
-            `Failed to format message: ${err instanceof Error ? err.message : 'Unknown error'}`
-          );
         }
+        // Si es un string que parece JSON, validar que sea JSON válido
+        else if (
+          typeof content === 'string' &&
+          (content.startsWith('{') || content.startsWith('['))
+        ) {
+          try {
+            // Validar que sea JSON válido
+            JSON.parse(content);
+          } catch {
+            // Si no es JSON válido, convertirlo a formato de texto
+            content = JSON.stringify([{ type: 'text', text: content }]);
+          }
+        }
+        // Para strings simples, convertirlos a formato de texto
+        else if (typeof content === 'string') {
+          // Si es "[object Object]", lo reemplazamos con un mensaje más amigable
+          if (content === '[object Object]') {
+            content = JSON.stringify([
+              { type: 'text', text: 'Mensaje no disponible' },
+            ]);
+          } else {
+            content = JSON.stringify([{ type: 'text', text: content }]);
+          }
+        }
+
+        return {
+          id: message.id,
+          chat_id: chatId,
+          role: message.role,
+          content,
+          created_at: new Date().toISOString(),
+        };
       });
 
       const { error } = await client.from('messages').insert(formattedMessages);
-
-      if (error) {
-        console.error('Database error in saveMessages:', error);
-        throw error;
-      }
+      if (error) throw error;
     },
     [{ chatId, messages }],
-    [`chat_${chatId}_messages`, `chat_${chatId}`]
+    [`chat_${chatId}`, `chat_${chatId}_messages`, 'messages']
   );
 }
 
