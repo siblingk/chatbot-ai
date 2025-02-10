@@ -8,28 +8,6 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export interface PromptConfig {
-  id: string;
-  created_at: string;
-  updated_at: string;
-  system_config: {
-    tone: 1 | 2 | 3 | 4 | 5;
-    technicalDepth: 1 | 2 | 3 | 4 | 5;
-    responseLength: 1 | 2 | 3 | 4 | 5;
-    language: 'en' | 'es';
-    empathyLevel: 1 | 2 | 3 | 4 | 5;
-    urgencyEmphasis: 1 | 2 | 3 | 4 | 5;
-  };
-  business_rules: {
-    minQuoteAmount: number;
-    maxQuoteAmount: number;
-    warrantyPeriod: number;
-    maxShopOptions: number;
-    priceRangeBuffer: number;
-  };
-  is_active: boolean;
-}
-
 export type Database = {
   public: {
     Tables: {
@@ -292,22 +270,6 @@ export type Database = {
             referencedColumns: ['id'];
           },
         ];
-      };
-      prompt_config: {
-        Row: PromptConfig;
-        Insert: Omit<PromptConfig, 'id' | 'created_at' | 'updated_at'> & {
-          id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Update: Partial<
-          Omit<PromptConfig, 'id' | 'created_at' | 'updated_at'>
-        > & {
-          id?: string;
-          created_at?: string;
-          updated_at?: string;
-        };
-        Relationships: [];
       };
     };
     Views: {
