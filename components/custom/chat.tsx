@@ -7,15 +7,14 @@ import { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
 
-import { useActivePromptConfig } from '@/hooks/use-active-prompt-config';
+import { ChatHeader } from '@/components/custom/chat-header';
+import { PreviewMessage, ThinkingMessage } from '@/components/custom/message';
+import { useScrollToBottom } from '@/components/custom/use-scroll-to-bottom';
 import { Database } from '@/lib/supabase/types';
 import { fetcher } from '@/lib/utils';
 
 import { Block, UIBlock } from './block';
 import { BlockStreamHandler } from './block-stream-handler';
-import { ChatHeader } from './chat-header';
-import { PreviewMessage, ThinkingMessage } from './message';
-import { useScrollToBottom } from '@/components/custom/use-scroll-to-bottom';
 import { MultimodalInput } from './multimodal-input';
 import { Overview } from './overview';
 
@@ -31,7 +30,6 @@ export function Chat({
   selectedModelId: string;
 }) {
   const { mutate } = useSWRConfig();
-  const { prompts, isLoading: isLoadingPrompts } = useActivePromptConfig();
 
   const {
     messages,
@@ -44,11 +42,7 @@ export function Chat({
     stop,
     data: streamingData,
   } = useChat({
-    body: {
-      id,
-      modelId: selectedModelId,
-      prompts,
-    },
+    body: { id, modelId: selectedModelId },
     initialMessages,
     onFinish: () => {
       mutate('/api/history');
@@ -82,18 +76,7 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
 
-  if (isLoadingPrompts) {
-    return (
-      <div className="flex flex-col min-w-0 h-dvh bg-background">
-        <ChatHeader selectedModelId={selectedModelId} />
-        <div className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4">
-          <div className="flex items-center justify-center h-full">
-            <p className="text-muted-foreground">Cargando configuración...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+  console.log(messages);
 
   return (
     <>
