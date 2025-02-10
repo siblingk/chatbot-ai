@@ -68,8 +68,10 @@ function formatMessageContent(message: CoreMessage): string {
     const content = message.content;
     // Si es un objeto o array, convertirlo a string
     if (typeof content === 'object' && content !== null) {
+      // @ts-ignore
       return typeof content.text === 'string'
-        ? content.text
+        ? // @ts-ignore
+          content.text
         : JSON.stringify(content);
     }
     // Si es string o cualquier otro tipo, convertirlo a string
