@@ -46,7 +46,11 @@ export const PreviewMessage = ({
         )}
         <div className="min-w-0 py-2">
           <div className="prose max-w-none dark:prose-invert">
-            <Markdown>{message.content}</Markdown>
+            {typeof message.content === 'string' ? (
+              <Markdown>{message.content}</Markdown>
+            ) : (
+              <pre>{JSON.stringify(message.content, null, 2)}</pre>
+            )}
           </div>
           <MessageActions
             key={`action-${message.id}`}

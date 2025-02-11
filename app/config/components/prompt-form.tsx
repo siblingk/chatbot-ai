@@ -1,11 +1,7 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import * as z from 'zod';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -16,27 +12,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { createClient } from '@/lib/supabase/client';
-
-const promptFormSchema = z.object({
-  name: z.string().min(1, 'El nombre es requerido'),
-  content: z.string().min(1, 'El contenido es requerido'),
-  is_default: z.boolean().default(false),
-});
-
-type PromptFormValues = z.infer<typeof promptFormSchema>;
 
 interface Prompt {
   id: string;
@@ -45,164 +25,187 @@ interface Prompt {
   is_default: boolean;
   created_at: string;
   updated_at: string;
+  user_id: string | null;
 }
 
 interface PromptFormProps {
-  prompt?: Prompt;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onSuccess: () => void;
+  prompt?: Prompt;
+  onSuccess?: () => void;
 }
 
 export function PromptForm({
-  prompt,
   open,
   onOpenChange,
+  prompt,
   onSuccess,
 }: PromptFormProps) {
-  const form = useForm<PromptFormValues>({
-    resolver: zodResolver(promptFormSchema),
-    defaultValues: {
-      name: '',
-      content: '',
-      is_default: false,
-    },
-  });
+  const [isLoading, setIsLoading] = useState(false);
+  const [name, setName] = useState('');
+  const [content, setContent] = useState('');
+  const [isDefault, setIsDefault] = useState(false);
 
   useEffect(() => {
     if (prompt) {
-      form.reset({
-        name: prompt.name,
-        content: prompt.content,
-        is_default: prompt.is_default,
-      });
+      setName(prompt.name);
+      setContent(prompt.content);
+      setIsDefault(prompt.is_default);
+    } else {
+      setName('');
+      setContent('');
+      setIsDefault(false);
     }
-  }, [prompt, form]);
+  }, [prompt]);
 
-  const onSubmit = async (data: PromptFormValues) => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+
     try {
       const supabase = createClient();
+      const now = new Date().toISOString();
+
+      // Obtener el usuario actual
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      console.log('Usuario actual:', user);
+      console.log('Prompt a guardar:', prompt);
+
+      if (userError) throw userError;
+      if (!user) throw new Error('No se encontró el usuario');
 
       if (prompt?.id) {
+        console.log('Actualizando prompt existente:', prompt);
+
+        // Solo permitir editar si el prompt pertenece al usuario
+        if (prompt.user_id !== user.id) {
+          throw new Error('No puedes editar este prompt');
+        }
+
+        // Actualizar prompt existente
         const { error } = await supabase
           .from('prompts')
           .update({
-            name: data.name,
-            content: data.content,
-            is_default: data.is_default,
-            updated_at: new Date().toISOString(),
+            name,
+            content,
+            is_default: isDefault,
+            updated_at: now,
           })
           .eq('id', prompt.id);
 
         if (error) throw error;
+
         toast.success('Prompt actualizado correctamente');
       } else {
-        const { error } = await supabase.from('prompts').insert({
-          name: data.name,
-          content: data.content,
-          is_default: data.is_default,
-        });
+        console.log('Creando nuevo prompt para el usuario:', user.id);
 
-        if (error) throw error;
+        // Crear nuevo prompt
+        const { data, error } = await supabase
+          .from('prompts')
+          .insert({
+            name,
+            content,
+            is_default: isDefault,
+            user_id: user.id,
+            created_at: now,
+            updated_at: now,
+          })
+          .select();
+
+        console.log('Resultado de la inserción:', { data, error });
+
+        if (error) {
+          console.error('Error al insertar:', error);
+          throw error;
+        }
+
+        if (!data || data.length === 0) {
+          throw new Error('No se pudo crear el prompt');
+        }
+
         toast.success('Prompt creado correctamente');
       }
 
-      onSuccess();
+      onSuccess?.();
       onOpenChange(false);
     } catch (error) {
-      console.error('Error saving prompt:', error);
+      console.error('Error al guardar el prompt:', error);
       toast.error('Error al guardar el prompt');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[625px]">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {prompt?.id ? 'Editar Prompt' : 'Nuevo Prompt'}
+            {prompt?.id ? 'Editar Prompt' : 'Crear Nuevo Prompt'}
           </DialogTitle>
           <DialogDescription>
-            Crea o edita un prompt personalizado para el chat
+            {prompt?.id
+              ? 'Modifica los detalles del prompt seleccionado.'
+              : 'Crea un nuevo prompt personalizado para el chat.'}
           </DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nombre</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Mi prompt personalizado" {...field} />
-                  </FormControl>
-                  <FormDescription>
-                    Un nombre descriptivo para identificar el prompt
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Nombre</Label>
+            <Input
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nombre del prompt"
+              disabled={isLoading}
+              required
             />
-            <FormField
-              control={form.control}
-              name="content"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Contenido</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Escribe aquí el contenido del prompt..."
-                      className="min-h-[200px] resize-none"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    El contenido del prompt que se usará en el chat
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="content">Contenido</Label>
+            <Textarea
+              id="content"
+              value={content}
+              onChange={(e) => setContent(e.target.value)}
+              placeholder="Escribe el contenido del prompt..."
+              className="h-[200px]"
+              disabled={isLoading}
+              required
             />
-            <FormField
-              control={form.control}
-              name="is_default"
-              render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                  <div className="space-y-0.5">
-                    <FormLabel className="text-base">
-                      Prompt por Defecto
-                    </FormLabel>
-                    <FormDescription>
-                      Usar este prompt como el predeterminado
-                    </FormDescription>
-                  </div>
-                  <FormControl>
-                    <Switch
-                      checked={field.value}
-                      onCheckedChange={field.onChange}
-                    />
-                  </FormControl>
-                </FormItem>
-              )}
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="is-default"
+              checked={isDefault}
+              onCheckedChange={setIsDefault}
+              disabled={isLoading}
             />
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                Cancelar
-              </Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting && (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                )}
-                {prompt?.id ? 'Guardar Cambios' : 'Crear Prompt'}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+            <Label htmlFor="is-default">
+              Activar como prompt predeterminado
+            </Label>
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancelar
+            </Button>
+            <Button type="submit" disabled={isLoading}>
+              {prompt?.id ? 'Actualizar' : 'Crear'}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   );

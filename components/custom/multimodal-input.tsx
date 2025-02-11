@@ -1,7 +1,5 @@
 'use client';
-
 import { Attachment, ChatRequestOptions, CreateMessage, Message } from 'ai';
-import cx from 'classnames';
 import { motion } from 'framer-motion';
 import React, {
   useRef,
@@ -14,10 +12,10 @@ import React, {
 } from 'react';
 import { toast } from 'sonner';
 import { useLocalStorage, useWindowSize } from 'usehooks-ts';
+import { ArrowUp, Paperclip, Square } from 'lucide-react';
 
-import { sanitizeUIMessages } from '@/lib/utils';
+import type { Prompt } from '@/ai/prompts';
 
-import { ArrowUpIcon, PaperclipIcon, StopIcon } from './icons';
 import { PreviewAttachment } from './preview-attachment';
 import { Button } from '../ui/button';
 import { Textarea } from '../ui/textarea';
@@ -35,20 +33,7 @@ const suggestedActions = [
   },
 ];
 
-export function MultimodalInput({
-  chatId,
-  input,
-  setInput,
-  isLoading,
-  stop,
-  attachments,
-  setAttachments,
-  messages,
-  setMessages,
-  append,
-  handleSubmit,
-  className,
-}: {
+interface MultimodalInputProps {
   chatId: string;
   input: string;
   setInput: (value: string) => void;
@@ -69,7 +54,24 @@ export function MultimodalInput({
     chatRequestOptions?: ChatRequestOptions
   ) => void;
   className?: string;
-}) {
+  onPromptSelect?: (prompt: Prompt) => void;
+}
+
+export function MultimodalInput({
+  chatId,
+  input,
+  setInput,
+  isLoading,
+  stop,
+  attachments,
+  setAttachments,
+  messages,
+  setMessages,
+  append,
+  handleSubmit,
+  className,
+  onPromptSelect,
+}: MultimodalInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { width } = useWindowSize();
 
@@ -240,6 +242,14 @@ export function MultimodalInput({
     [setAttachments, chatId]
   );
 
+  const handlePromptSelect = (prompt: Prompt) => {
+    setInput(prompt.content);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+      adjustHeight();
+    }
+  };
+
   return (
     <div className="relative flex w-full flex-col gap-4">
       {messages.length === 0 &&
@@ -248,149 +258,113 @@ export function MultimodalInput({
           <div className="grid w-full gap-2 sm:grid-cols-2">
             {suggestedActions.map((suggestedAction, index) => (
               <motion.div
+                key={index}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 20 }}
-                transition={{ delay: 0.05 * index }}
-                key={index}
-                className={index > 1 ? 'hidden sm:block' : 'block'}
+                transition={{ delay: index * 0.1 }}
+                className="flex cursor-pointer flex-col gap-2 rounded-lg bg-muted/50 p-4 hover:bg-muted"
+                onClick={() => setInput(suggestedAction.action)}
               >
-                <Button
-                  variant="ghost"
-                  onClick={async () => {
-                    window.history.replaceState({}, '', `/chat/${chatId}`);
-
-                    append({
-                      role: 'user',
-                      content: suggestedAction.action,
-                    });
-                  }}
-                  className="h-auto w-full flex-1 items-start justify-start gap-1 rounded-xl border px-4 py-3.5 text-left text-sm sm:flex-col"
-                >
-                  <span className="font-medium">{suggestedAction.title}</span>
-                  <span className="text-muted-foreground">
-                    {suggestedAction.label}
-                  </span>
-                </Button>
+                <div className="font-medium">{suggestedAction.title}</div>
+                <div className="text-sm text-muted-foreground">
+                  {suggestedAction.label}
+                </div>
               </motion.div>
             ))}
           </div>
         )}
 
-      <input
-        type="file"
-        className="pointer-events-none fixed -left-4 -top-4 size-0.5 opacity-0"
-        ref={fileInputRef}
-        multiple
-        onChange={handleFileChange}
-        tabIndex={-1}
-      />
-
-      {(attachments.length > 0 || uploadQueue.length > 0) && (
-        <div className="flex flex-row items-end gap-2 overflow-x-scroll">
-          {attachments.map((attachment) => (
-            <PreviewAttachment key={attachment.url} attachment={attachment} />
-          ))}
-
-          {uploadQueue.map((filename) => (
-            <PreviewAttachment
-              key={filename}
-              attachment={{
-                url: '',
-                name: filename,
-                contentType: '',
-              }}
-              isUploading={true}
-            />
-          ))}
-        </div>
-      )}
-
-      <Textarea
-        ref={textareaRef}
-        placeholder="Describe your vehicle's problem or the service you need..."
-        value={input}
-        onChange={handleInput}
-        className={cx(
-          'min-h-[24px] max-h-[calc(75dvh)] overflow-hidden resize-none rounded-xl text-base bg-muted',
-          className
+      <div className="flex flex-col gap-2">
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {attachments.map((attachment) => (
+              <PreviewAttachment
+                key={attachment.name}
+                attachment={attachment}
+                onRemove={() => {
+                  setAttachments((currentAttachments) =>
+                    currentAttachments.filter((a) => a.name !== attachment.name)
+                  );
+                }}
+              />
+            ))}
+          </div>
         )}
-        rows={3}
-        autoFocus
-        onKeyDown={async (event) => {
-          if (event.key === 'Enter' && !event.shiftKey) {
-            event.preventDefault();
 
-            if (isLoading) {
-              toast.error(
-                'Por favor espera a que el modelo termine su respuesta.'
-              );
-              return;
-            }
+        {uploadQueue.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {uploadQueue.map((fileName) => (
+              <div
+                key={fileName}
+                className="flex items-center gap-2 rounded-md bg-muted p-2 text-sm text-muted-foreground"
+              >
+                <Paperclip className="size-4" />
+                <span>Subiendo {fileName}...</span>
+              </div>
+            ))}
+          </div>
+        )}
 
-            if (!input.trim()) {
-              toast.error('Por favor ingresa un mensaje');
-              return;
-            }
+        <div className="relative flex flex-col gap-2">
+          <div className="relative flex w-full items-end gap-2 ">
+            <Textarea
+              ref={textareaRef}
+              tabIndex={0}
+              rows={1}
+              value={input}
+              onChange={handleInput}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' && !event.shiftKey) {
+                  event.preventDefault();
+                  submitForm();
+                }
+              }}
+              placeholder="Escribe un mensaje..."
+              spellCheck={false}
+              className="min-h-[60px] w-full resize-none rounded-2xl bg-background px-4 py-[1.3rem]"
+            />
 
-            try {
-              await submitForm();
-            } catch (error) {
-              console.error('Error al enviar mensaje:', error);
-              toast.error(
-                'Error al enviar el mensaje. Por favor intenta de nuevo.'
-              );
-            }
-          }
-        }}
-      />
+            <div className="absolute right-0 top-1 flex h-full items-center gap-2 pr-2">
+              <input
+                className="hidden"
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                multiple
+              />
 
-      {isLoading ? (
-        <Button
-          className="absolute bottom-2 right-2 m-0.5 h-fit rounded-full border p-1.5 dark:border-zinc-600"
-          onClick={(event) => {
-            event.preventDefault();
-            stop();
-            setMessages((messages) => sanitizeUIMessages(messages));
-          }}
-        >
-          <StopIcon size={14} />
-        </Button>
-      ) : (
-        <Button
-          className="absolute bottom-2 right-2 m-0.5 h-fit rounded-full border p-1.5 dark:border-zinc-600"
-          onClick={async (event) => {
-            event.preventDefault();
-            if (!input.trim()) {
-              toast.error('Por favor ingresa un mensaje');
-              return;
-            }
-            try {
-              await submitForm();
-            } catch (error) {
-              console.error('Error al enviar mensaje:', error);
-              toast.error(
-                'Error al enviar el mensaje. Por favor intenta de nuevo.'
-              );
-            }
-          }}
-          disabled={!input.trim() || uploadQueue.length > 0}
-        >
-          <ArrowUpIcon size={14} />
-        </Button>
-      )}
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                onClick={() => fileInputRef.current?.click()}
+              >
+                <Paperclip className="size-4" />
+              </Button>
 
-      <Button
-        className="absolute bottom-2 right-11 m-0.5 h-fit rounded-full p-1.5 dark:border-zinc-700"
-        onClick={(event) => {
-          event.preventDefault();
-          fileInputRef.current?.click();
-        }}
-        variant="outline"
-        disabled={isLoading}
-      >
-        <PaperclipIcon size={14} />
-      </Button>
+              <Button
+                type="submit"
+                size="icon"
+                variant="ghost"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (isLoading) {
+                    stop();
+                  } else {
+                    submitForm();
+                  }
+                }}
+              >
+                {isLoading ? (
+                  <Square className="size-4" />
+                ) : (
+                  <ArrowUp className="size-4" />
+                )}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

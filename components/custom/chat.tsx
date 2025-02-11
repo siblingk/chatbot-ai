@@ -3,7 +3,7 @@
 import { Attachment, Message } from 'ai';
 import { useChat } from 'ai/react';
 import { AnimatePresence } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { useWindowSize } from 'usehooks-ts';
 
@@ -12,6 +12,7 @@ import { PreviewMessage, ThinkingMessage } from '@/components/custom/message';
 import { useScrollToBottom } from '@/components/custom/use-scroll-to-bottom';
 import { Database } from '@/lib/supabase/types';
 import { fetcher } from '@/lib/utils';
+import type { Prompt } from '@/ai/prompts';
 
 import { Block, UIBlock } from './block';
 import { BlockStreamHandler } from './block-stream-handler';
@@ -30,6 +31,19 @@ export function Chat({
   selectedModelId: string;
 }) {
   const { mutate } = useSWRConfig();
+  const { data: systemPrompt } = useSWR<Prompt>('/api/prompt', fetcher);
+
+  useEffect(() => {
+    console.log('Prompt activo para el chat:', {
+      id: systemPrompt?.id,
+      name: systemPrompt?.name,
+      content: systemPrompt?.content,
+      is_default: systemPrompt?.is_default,
+      user_id: systemPrompt?.user_id,
+      created_at: systemPrompt?.created_at,
+      updated_at: systemPrompt?.updated_at,
+    });
+  }, [systemPrompt]);
 
   const {
     messages,
@@ -42,10 +56,26 @@ export function Chat({
     stop,
     data: streamingData,
   } = useChat({
-    body: { id, modelId: selectedModelId },
+    api: '/api/chat',
+    id,
+    body: {
+      id,
+      modelId: selectedModelId,
+      systemPrompt: systemPrompt?.content,
+    },
     initialMessages,
+    streamProtocol: 'text',
     onFinish: () => {
       mutate('/api/history');
+    },
+    onResponse: (response) => {
+      if (!response.ok) {
+        console.error('Error en la respuesta:', response.statusText);
+        throw new Error('Error en la respuesta del chat');
+      }
+    },
+    onError: (error) => {
+      console.error('Error en el chat:', error);
     },
   });
 
@@ -76,15 +106,13 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
 
-  console.log(messages);
-
   return (
     <>
-      <div className="flex flex-col min-w-0 h-dvh bg-background">
+      <div className="flex h-dvh min-w-0 flex-col bg-background">
         <ChatHeader selectedModelId={selectedModelId} />
         <div
           ref={messagesContainerRef}
-          className="flex flex-col min-w-0 gap-6 flex-1 overflow-y-scroll pt-4"
+          className="flex min-w-0 flex-1 flex-col gap-6 overflow-y-scroll pt-4"
         >
           {messages.length === 0 && <Overview />}
 
@@ -112,10 +140,10 @@ export function Chat({
 
           <div
             ref={messagesEndRef}
-            className="shrink-0 min-w-[24px] min-h-[24px]"
+            className="min-h-[24px] min-w-[24px] shrink-0"
           />
         </div>
-        <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
+        <form className="mx-auto flex w-full gap-2 bg-background px-4 pb-4 md:max-w-3xl md:pb-6">
           <MultimodalInput
             chatId={id}
             input={input}

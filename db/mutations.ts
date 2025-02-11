@@ -254,41 +254,37 @@ export async function saveDocument({
   );
 }
 
-export async function saveSuggestions({
-  suggestions,
-}: {
+export async function saveSuggestions(
   suggestions: Array<{
+    id: string;
+    userId: string;
     documentId: string;
     documentCreatedAt: string;
     originalText: string;
     suggestedText: string;
-    description: string;
-    userId: string;
+    description?: string;
     isResolved: boolean;
-  }>;
-}) {
+  }>
+) {
   await mutateQuery(
     async (client, suggestions) => {
       const { error } = await client.from('suggestions').insert(
-        suggestions.map((s) => ({
-          document_id: s.documentId,
-          document_created_at: s.documentCreatedAt,
-          original_text: s.originalText,
-          suggested_text: s.suggestedText,
-          description: s.description,
-          user_id: s.userId,
-          is_resolved: s.isResolved,
+        suggestions.map((suggestion) => ({
+          id: suggestion.id,
+          user_id: suggestion.userId,
+          document_id: suggestion.documentId,
+          document_created_at: suggestion.documentCreatedAt,
+          original_text: suggestion.originalText,
+          suggested_text: suggestion.suggestedText,
+          description: suggestion.description,
+          is_resolved: suggestion.isResolved,
+          created_at: new Date().toISOString(),
         }))
       );
       if (error) throw error;
     },
     [suggestions],
-    suggestions
-      .map((s) => [
-        `document_${s.documentId}_suggestions`,
-        `document_${s.documentId}`,
-      ])
-      .flat()
+    ['suggestions']
   );
 }
 

@@ -1,17 +1,10 @@
-import {
-  convertToCoreMessages,
-  CoreMessage,
-  Message,
-  StreamData,
-  streamObject,
-  streamText,
-} from 'ai';
+import { convertToCoreMessages, CoreMessage, StreamData, streamText } from 'ai';
 import { z } from 'zod';
+import { TextEncoder } from 'util';
 
 import { customModel } from '@/ai';
 import { models } from '@/ai/models';
-import { blocksPrompt, regularPrompt, systemPrompt } from '@/ai/prompts';
-import { getChatById, getDocumentById, getSession } from '@/db/cached-queries';
+import { getChatById, getDocumentById } from '@/db/cached-queries';
 import {
   saveChat,
   saveDocument,
@@ -21,95 +14,34 @@ import {
 } from '@/db/mutations';
 import { createClient } from '@/lib/supabase/server';
 import { MessageRole } from '@/lib/supabase/types';
-import {
-  generateUUID,
-  getMostRecentUserMessage,
-  sanitizeResponseMessages,
-} from '@/lib/utils';
+import { generateUUID, getMostRecentUserMessage } from '@/lib/utils';
+import type { ChatTools } from '../types';
 
 import { generateTitleFromUserMessage } from '../../actions';
 
 export const maxDuration = 60;
 
-type AllowedTools =
-  | 'createDocument'
-  | 'updateDocument'
-  | 'requestSuggestions'
-  | 'getWeather';
-
-const blocksTools: AllowedTools[] = [
-  'createDocument',
-  'updateDocument',
-  'requestSuggestions',
-];
-
-const weatherTools: AllowedTools[] = ['getWeather'];
-
-const allTools: AllowedTools[] = [...blocksTools, ...weatherTools];
-
+// Obtener el usuario actual
 async function getUser() {
   const supabase = await createClient();
   const {
     data: { user },
-    error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    throw new Error('Unauthorized');
+  if (!user) {
+    throw new Error('No authenticated user');
   }
 
   return user;
 }
 
-// Add helper function to format message content for database storage
+// Formatear el contenido del mensaje
 function formatMessageContent(message: CoreMessage): string {
-  // Para mensajes del usuario
-  if (message.role === 'user') {
-    const content = message.content;
-    // Si es un objeto o array, convertirlo a string
-    if (typeof content === 'object' && content !== null) {
-      // @ts-ignore
-      return typeof content.text === 'string'
-        ? // @ts-ignore
-          content.text
-        : JSON.stringify(content);
-    }
-    // Si es string o cualquier otro tipo, convertirlo a string
-    return String(content);
+  if (typeof message.content === 'string') {
+    return message.content;
   }
 
-  // Para mensajes de herramientas
-  if (message.role === 'tool') {
-    return message.content
-      .map(
-        (content) => `${content.toolName}: ${JSON.stringify(content.result)}`
-      )
-      .join('\n');
-  }
-
-  // Para mensajes del asistente
-  if (message.role === 'assistant') {
-    const content = message.content;
-    // Si ya es string, retornarlo directamente
-    if (typeof content === 'string') {
-      return content;
-    }
-    // Si es array, concatenar los textos
-    if (Array.isArray(content)) {
-      return content
-        .map((item) => {
-          if ('text' in item) return item.text;
-          if ('toolCallId' in item) return `[${item.toolName}]`;
-          return JSON.stringify(item);
-        })
-        .join('\n');
-    }
-    // Si es objeto, convertirlo a string
-    return JSON.stringify(content);
-  }
-
-  // Para cualquier otro caso
-  return String(message.content);
+  return JSON.stringify(message.content);
 }
 
 export async function POST(request: Request) {
@@ -120,7 +52,7 @@ export async function POST(request: Request) {
       throw new Error('Invalid request body');
     });
 
-    const { id, messages, modelId } = body;
+    const { id, messages, modelId, systemPrompt } = body;
 
     // Validate required fields
     if (!id || !messages || !modelId) {
@@ -193,28 +125,39 @@ export async function POST(request: Request) {
 
       const streamingData = new StreamData();
 
-      const result = await streamText({
+      // Obtener el prompt del sistema si no se proporciona uno
+      let finalSystemPrompt = systemPrompt;
+      if (!finalSystemPrompt) {
+        try {
+          const supabase = await createClient();
+          const { data: defaultPrompt } = await supabase
+            .from('prompts')
+            .select('content')
+            .is('user_id', null)
+            .eq('is_default', true)
+            .single();
+
+          if (defaultPrompt) {
+            finalSystemPrompt = defaultPrompt.content;
+          }
+        } catch (error) {
+          console.error('Error getting system prompt:', error);
+          // Usar el prompt por defecto si hay error
+          finalSystemPrompt = systemPrompt;
+        }
+      }
+
+      const result = await streamText<ChatTools>({
         model: customModel(model.apiIdentifier),
-        system: systemPrompt,
+        system: finalSystemPrompt,
         messages: coreMessages,
         maxSteps: 5,
-        experimental_activeTools: allTools,
+        experimental_activeTools: [
+          'createDocument',
+          'updateDocument',
+          'requestSuggestions',
+        ],
         tools: {
-          getWeather: {
-            description: 'Get the current weather at a location',
-            parameters: z.object({
-              latitude: z.number(),
-              longitude: z.number(),
-            }),
-            execute: async ({ latitude, longitude }) => {
-              const response = await fetch(
-                `https://api.open-meteo.com/v1/forecast?latitude=${latitude}&longitude=${longitude}&current=temperature_2m&hourly=temperature_2m&daily=sunrise,sunset&timezone=auto`
-              );
-
-              const weatherData = await response.json();
-              return weatherData;
-            },
-          },
           createDocument: {
             description: 'Create a document for a writing activity',
             parameters: z.object({
@@ -250,340 +193,133 @@ export async function POST(request: Request) {
                 }
               }
 
-              // Try to save with retries
-              // let attempts = 0;
-              // const maxAttempts = 3;
-              // let savedId: string | null = null;
+              // Cerrar el stream de datos
+              streamingData.close();
 
-              // while (attempts < maxAttempts && !savedId) {
-              //   try {
-              //     await saveDocument({
-              //       id,
-              //       title,
-              //       content: draftText,
-              //       userId: user.id,
-              //     });
-              //     savedId = id;
-              //     break;
-              //   } catch (error) {
-              //     attempts++;
-              //     if (attempts === maxAttempts) {
-              //       // If original ID fails, try with a new ID
-              //       const newId = generateUUID();
-              //       try {
-              //         await saveDocument({
-              //           id: newId,
-              //           title,
-              //           content: draftText,
-              //           userId: user.id,
-              //         });
-              //         // Update the ID in the UI
-              //         streamingData.append({ type: 'id', content: newId });
-              //         savedId = newId;
-              //       } catch (finalError) {
-              //         console.error('Final attempt failed:', finalError);
-              //         return {
-              //           error:
-              //             'Failed to create document after multiple attempts',
-              //         };
-              //       }
-              //     }
-              //     await new Promise((resolve) =>
-              //       setTimeout(resolve, 100 * attempts)
-              //     );
-              //   }
-              // }
-
-              streamingData.append({ type: 'finish', content: '' });
-
-              if (user && user.id) {
-                await saveDocument({
-                  id,
-                  title,
-                  content: draftText,
-                  userId: user.id,
-                });
-              }
+              // Save document
+              await saveDocument({
+                id,
+                userId: user.id,
+                title,
+                content: draftText,
+              });
 
               return {
                 id,
                 title,
-                content: `A document was created and is now visible to the user.`,
+                content: draftText,
               };
             },
           },
           updateDocument: {
-            description: 'Update a document with the given description',
+            description: 'Update an existing document',
             parameters: z.object({
-              id: z.string().describe('The ID of the document to update'),
-              description: z
-                .string()
-                .describe('The description of changes that need to be made'),
+              id: z.string(),
+              content: z.string(),
             }),
-            execute: async ({ id, description }) => {
+            execute: async ({ id, content }) => {
+              // Get document
               const document = await getDocumentById(id);
 
               if (!document) {
-                return {
-                  error: 'Document not found',
-                };
+                throw new Error('Document not found');
               }
 
-              const { content: currentContent } = document;
-              let draftText: string = '';
-
-              streamingData.append({
-                type: 'clear',
-                content: document.title,
+              // Save document
+              await saveDocument({
+                id,
+                userId: user.id,
+                title: document.title,
+                content,
               });
-
-              const { fullStream } = await streamText({
-                model: customModel(model.apiIdentifier),
-                system:
-                  'You are a helpful writing assistant. Based on the description, please update the piece of writing.',
-                experimental_providerMetadata: {
-                  openai: {
-                    prediction: {
-                      type: 'content',
-                      content: currentContent,
-                    },
-                  },
-                },
-                messages: [
-                  {
-                    role: 'user',
-                    content: description,
-                  },
-                  { role: 'user', content: currentContent },
-                ],
-              });
-
-              for await (const delta of fullStream) {
-                const { type } = delta;
-
-                if (type === 'text-delta') {
-                  const { textDelta } = delta;
-
-                  draftText += textDelta;
-                  streamingData.append({
-                    type: 'text-delta',
-                    content: textDelta,
-                  });
-                }
-              }
-
-              streamingData.append({ type: 'finish', content: '' });
-
-              if (user && user.id) {
-                await saveDocument({
-                  id,
-                  title: document.title,
-                  content: draftText,
-                  userId: user.id,
-                });
-              }
 
               return {
                 id,
                 title: document.title,
-                content: 'The document has been updated successfully.',
+                content,
               };
             },
           },
           requestSuggestions: {
             description: 'Request suggestions for a document',
             parameters: z.object({
-              documentId: z
-                .string()
-                .describe('The ID of the document to request edits'),
+              documentId: z.string(),
+              originalText: z.string(),
+              suggestedText: z.string(),
+              description: z.string(),
             }),
-            execute: async ({ documentId }) => {
+            execute: async ({
+              documentId,
+              originalText,
+              suggestedText,
+              description,
+            }) => {
+              // Get document
               const document = await getDocumentById(documentId);
 
-              if (!document || !document.content) {
-                return {
-                  error: 'Document not found',
-                };
+              if (!document) {
+                throw new Error('Document not found');
               }
 
-              let suggestions: Array<{
-                originalText: string;
-                suggestedText: string;
-                description: string;
-                id: string;
-                documentId: string;
-                isResolved: boolean;
-              }> = [];
-
-              const { elementStream } = await streamObject({
-                model: customModel(model.apiIdentifier),
-                system:
-                  'You are a help writing assistant. Given a piece of writing, please offer suggestions to improve the piece of writing and describe the change. It is very important for the edits to contain full sentences instead of just words. Max 5 suggestions.',
-                prompt: document.content,
-                output: 'array',
-                schema: z.object({
-                  originalSentence: z
-                    .string()
-                    .describe('The original sentence'),
-                  suggestedSentence: z
-                    .string()
-                    .describe('The suggested sentence'),
-                  description: z
-                    .string()
-                    .describe('The description of the suggestion'),
-                }),
-              });
-
-              for await (const element of elementStream) {
-                const suggestion = {
-                  originalText: element.originalSentence,
-                  suggestedText: element.suggestedSentence,
-                  description: element.description,
-                  id: generateUUID(),
-                  documentId: documentId,
-                  isResolved: false,
-                };
-
-                streamingData.append({
-                  type: 'suggestion',
-                  content: suggestion,
-                });
-
-                suggestions.push(suggestion);
-              }
-
-              if (user && user.id) {
-                const userId = user.id;
-
-                await saveSuggestions({
-                  suggestions: suggestions.map((suggestion) => ({
-                    ...suggestion,
-                    userId,
-                    createdAt: new Date(),
-                    documentCreatedAt: document.created_at,
-                  })),
-                });
-              }
-
-              // if (user && user.id) {
-              //   for (const suggestion of suggestions) {
-              //     await saveSuggestions({
-              //       documentId: suggestion.documentId,
-              //       documentCreatedAt: document.created_at,
-              //       originalText: suggestion.originalText,
-              //       suggestedText: suggestion.suggestedText,
-              //       description: suggestion.description,
-              //       userId: user.id,
-              //     });
-              //   }
-              // }
-
-              return {
-                id: documentId,
-                title: document.title,
-                message: 'Suggestions have been added to the document',
+              // Save suggestion
+              const suggestion = {
+                id: generateUUID(),
+                userId: user.id,
+                documentId,
+                documentCreatedAt: document.created_at,
+                originalText,
+                suggestedText,
+                description,
+                isResolved: false,
               };
+
+              await saveSuggestions([suggestion]);
+
+              return suggestion;
             },
           },
         },
-        onFinish: async ({ responseMessages }: any) => {
-          if (user && user.id) {
-            let retryCount = 0;
-            const maxRetries = 3;
-
-            while (retryCount < maxRetries) {
-              try {
-                const responseMessagesWithoutIncompleteToolCalls =
-                  sanitizeResponseMessages(responseMessages);
-
-                await saveMessages({
-                  chatId: id,
-                  messages: responseMessagesWithoutIncompleteToolCalls.map(
-                    (message) => {
-                      const messageId = generateUUID();
-
-                      if (message.role === 'assistant') {
-                        streamingData.appendMessageAnnotation({
-                          messageIdFromServer: messageId,
-                        });
-                      }
-
-                      return {
-                        id: messageId,
-                        chat_id: id,
-                        role: message.role as MessageRole,
-                        content: formatMessageContent(message),
-                        created_at: new Date().toISOString(),
-                      };
-                    }
-                  ),
-                });
-                break; // If successful, exit the retry loop
-              } catch (error) {
-                console.error(
-                  `Failed to save chat (attempt ${retryCount + 1}):`,
-                  error
-                );
-                retryCount++;
-                if (retryCount === maxRetries) {
-                  console.error('Failed to save chat after maximum retries');
-                } else {
-                  // Wait before retrying, with exponential backoff
-                  await new Promise((resolve) =>
-                    setTimeout(resolve, 1000 * Math.pow(2, retryCount))
-                  );
-                }
-              }
-            }
-          }
-
-          streamingData.close();
-        },
-        experimental_telemetry: {
-          isEnabled: true,
-          functionId: 'stream-text',
-        },
       });
 
-      return result.toDataStreamResponse({
-        data: streamingData,
-      });
-    } catch (error) {
-      console.error('Error in chat flow:', error);
-      if (
-        error instanceof Error &&
-        error.message === 'Chat ID already exists'
-      ) {
-        // Handle duplicate chat ID
-        await saveMessages({
-          chatId: id,
-          messages: [
-            {
+      // Guardar el mensaje cuando termine el stream
+      result.text
+        .then(async (fullText) => {
+          if (fullText.trim()) {
+            const assistantMessage = {
               id: generateUUID(),
               chat_id: id,
-              role: userMessage.role as MessageRole,
-              content: formatMessageContent(userMessage),
+              role: 'assistant' as MessageRole,
+              content: fullText,
               created_at: new Date().toISOString(),
-            },
-          ],
+            };
+
+            await saveMessages({
+              chatId: id,
+              messages: [assistantMessage],
+            });
+          }
+
+          // Cerrar el stream después de guardar el mensaje
+          streamingData.close();
+        })
+        .catch((error) => {
+          console.error('Error processing stream:', error);
+          streamingData.close();
         });
-      } else {
-        throw error;
-      }
+
+      // Retornar el stream de texto directamente
+      return result.toTextStreamResponse();
+    } catch (error) {
+      console.error('Error in chat processing:', error);
+      throw error;
     }
   } catch (error) {
-    console.error('Unhandled error in chat endpoint:', error);
+    console.error('Error in POST /api/chat:', error);
     return new Response(
       JSON.stringify({
-        error: 'Internal server error',
-        details: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error ? error.message : 'Unknown error',
       }),
-      {
-        status: 500,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      }
+      { status: 500 }
     );
   }
 }
