@@ -145,12 +145,12 @@ export function PromptForm({
       <DialogContent>
         <DialogHeader>
           <DialogTitle>
-            {prompt?.id ? 'Editar Prompt' : 'Crear Nuevo Prompt'}
+            {prompt?.id ? 'Editar Prompt' : 'Crear Prompt Personalizado'}
           </DialogTitle>
           <DialogDescription>
             {prompt?.id
-              ? 'Modifica los detalles del prompt seleccionado.'
-              : 'Crea un nuevo prompt personalizado para el chat.'}
+              ? 'Modifica tu prompt personalizado para el chat.'
+              : 'Crea tu prompt personalizado para el chat. Solo puedes tener uno activo a la vez.'}
           </DialogDescription>
         </DialogHeader>
 
@@ -161,7 +161,7 @@ export function PromptForm({
               id="name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Nombre del prompt"
+              placeholder="Nombre descriptivo para tu prompt"
               disabled={isLoading}
               required
             />
@@ -173,7 +173,7 @@ export function PromptForm({
               id="content"
               value={content}
               onChange={(e) => setContent(e.target.value)}
-              placeholder="Escribe el contenido del prompt..."
+              placeholder="Escribe las instrucciones personalizadas que se agregarán al prompt del sistema..."
               className="h-[200px]"
               disabled={isLoading}
               required
@@ -188,7 +188,7 @@ export function PromptForm({
               disabled={isLoading}
             />
             <Label htmlFor="is-default">
-              Activar como prompt predeterminado
+              Activar este prompt personalizado
             </Label>
           </div>
 
