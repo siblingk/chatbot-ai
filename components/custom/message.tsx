@@ -11,6 +11,7 @@ import { UIBlock } from './block';
 import { SparklesIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
+import { Car } from 'lucide-react';
 
 export interface PreviewMessageProps {
   chatId: string;
@@ -39,7 +40,7 @@ export function PreviewMessage({
       >
         {message.role === 'assistant' && (
           <div className="flex size-8 shrink-0 items-center justify-center rounded-full ring-1 ring-border">
-            <SparklesIcon size={14} />
+            <Car size={14} />
           </div>
         )}
         <div className="min-w-0 py-2">
@@ -50,13 +51,6 @@ export function PreviewMessage({
               <pre>{JSON.stringify(message.content, null, 2)}</pre>
             )}
           </div>
-          <MessageActions
-            key={`action-${message.id}`}
-            chatId={chatId}
-            message={message}
-            vote={vote}
-            isLoading={isLoading}
-          />
         </div>
       </div>
     </motion.div>

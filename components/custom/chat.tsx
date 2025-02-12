@@ -17,8 +17,6 @@ import { MultimodalInput } from './multimodal-input';
 import { Overview } from './overview';
 import { UserInfoModal } from './user-info-modal';
 
-type Vote = Database['public']['Tables']['votes']['Row'];
-
 export function Chat({
   id,
   initialMessages,
@@ -52,11 +50,6 @@ export function Chat({
     },
   });
 
-  const { data: votes } = useSWR<Array<Vote>>(
-    `/api/vote?chatId=${id}`,
-    fetcher
-  );
-
   const [messagesContainerRef, messagesEndRef] =
     useScrollToBottom<HTMLDivElement>();
 
@@ -89,7 +82,6 @@ export function Chat({
               chatId={id}
               message={message}
               isLoading={isLoading && index === messages.length - 1}
-              vote={votes?.find((vote) => vote.message_id === message.id)}
             />
           ))}
 

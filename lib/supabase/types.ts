@@ -37,6 +37,7 @@ export interface Database {
           {
             foreignKeyName: 'chats_user_id_fkey';
             columns: ['user_id'];
+            isOneToOne: false;
             referencedRelation: 'users';
             referencedColumns: ['id'];
           },
@@ -78,30 +79,28 @@ export interface Database {
           id: string;
           chat_id: string;
           role: string;
-          content: Json;
+          content: string;
           created_at: string;
-          updated_at: string;
         };
         Insert: {
           id?: string;
           chat_id: string;
           role: string;
-          content: Json;
+          content: string;
           created_at?: string;
-          updated_at?: string;
         };
         Update: {
           id?: string;
           chat_id?: string;
           role?: string;
-          content?: Json;
+          content?: string;
           created_at?: string;
-          updated_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'messages_chat_id_fkey';
             columns: ['chat_id'];
+            isOneToOne: false;
             referencedRelation: 'chats';
             referencedColumns: ['id'];
           },
@@ -139,6 +138,7 @@ export interface Database {
           {
             foreignKeyName: 'prompts_user_id_fkey';
             columns: ['user_id'];
+            isOneToOne: false;
             referencedRelation: 'users';
             referencedColumns: ['id'];
           },
@@ -310,7 +310,15 @@ export interface Database {
           created_at?: string;
           updated_at?: string;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: 'users_id_fkey';
+            columns: ['id'];
+            isOneToOne: true;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
       };
       votes: {
         Row: {
