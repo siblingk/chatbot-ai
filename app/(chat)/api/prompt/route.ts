@@ -18,9 +18,12 @@ export async function GET() {
       );
     }
 
-    // Obtener las configuraciones del usuario
-    const { data: userSettings } = await supabase.rpc('get_user_settings');
-    const settings = userSettings?.[0];
+    // Obtener el perfil del usuario
+    const { data: userProfile } = await supabase
+      .from('users')
+      .select('*')
+      .eq('id', user.id)
+      .single();
 
     // Usar el prompt por defecto del sistema
     const systemPrompt = {
@@ -31,34 +34,19 @@ export async function GET() {
       user_id: null,
     };
 
-    // Construir el prompt base con las configuraciones del usuario
+    // Construir el prompt base con la información del usuario
     let basePrompt = systemPrompt.content;
 
-    if (settings) {
-      // Agregar información del usuario si está disponible
-      const userInfo = [];
-      if (settings.nombre_cliente)
-        userInfo.push(`Nombre del cliente: ${settings.nombre_cliente}`);
-      if (settings.info_vehiculo)
-        userInfo.push(`Vehículo: ${settings.info_vehiculo}`);
-      if (settings.historial_servicio)
-        userInfo.push(`Historial de servicio: ${settings.historial_servicio}`);
-      if (settings.ubicacion) userInfo.push(`Ubicación: ${settings.ubicacion}`);
+    if (userProfile) {
+      // Agregar información del usuario al contexto del prompt
+      basePrompt = `${basePrompt}
 
-      if (userInfo.length > 0) {
-        basePrompt += '\n\nInformación del Usuario:\n' + userInfo.join('\n');
-      }
+INFORMACIÓN DEL USUARIO ACTUAL:
+- Nombre: ${userProfile.nombre || 'No especificado'}
+- Teléfono: ${userProfile.telefono || 'No especificado'}
+- Ubicación: ${userProfile.ubicacion || 'No especificada'}
 
-      // Agregar configuraciones de comportamiento
-      basePrompt += '\n\nPreferencias de Interacción:';
-      basePrompt += `\n- Nivel de tono: ${settings.nivel_tono}/5 (${settings.nivel_tono <= 2 ? 'casual' : settings.nivel_tono >= 4 ? 'muy profesional' : 'profesional moderado'})`;
-      basePrompt += `\n- Nivel técnico: ${settings.nivel_tecnico}/5 (${settings.nivel_tecnico <= 2 ? 'básico' : settings.nivel_tecnico >= 4 ? 'muy detallado' : 'moderadamente técnico'})`;
-      basePrompt += `\n- Longitud de respuesta: ${settings.longitud_respuesta}/5 (${settings.longitud_respuesta <= 2 ? 'concisa' : settings.longitud_respuesta >= 4 ? 'muy detallada' : 'moderadamente detallada'})`;
-      basePrompt += `\n- Sensibilidad al precio: ${settings.sensibilidad_precio}/5 (${settings.sensibilidad_precio <= 2 ? 'enfoque en economía' : settings.sensibilidad_precio >= 4 ? 'enfoque en calidad premium' : 'balance calidad-precio'})`;
-      if (settings.nivel_urgencia) {
-        basePrompt +=
-          '\n- Manejo prioritario: Las respuestas deben ser rápidas y enfocadas en soluciones inmediatas';
-      }
+Usa esta información para personalizar tus respuestas.`;
     }
 
     // Obtener el prompt personalizado del usuario
@@ -82,13 +70,15 @@ export async function GET() {
       const userPrompt = userPrompts[0];
       const mergedPrompt = {
         ...systemPrompt,
-        content: `${basePrompt}\n\nInstrucciones personalizadas:\n${userPrompt.content}`,
+        content:
+          basePrompt +
+          `\n\nInstrucciones personalizadas:\n${userPrompt.content}`,
         name: `${systemPrompt.name} + ${userPrompt.name}`,
       };
       return NextResponse.json(mergedPrompt);
     }
 
-    // Si no hay prompt personalizado, usar solo el del sistema con las configuraciones
+    // Si no hay prompt personalizado, usar solo el del sistema con la info del usuario
     return NextResponse.json({
       ...systemPrompt,
       content: basePrompt,

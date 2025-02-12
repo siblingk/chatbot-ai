@@ -8,6 +8,7 @@ import {
   MessageSquare,
   Settings,
   Shield,
+  User,
 } from 'lucide-react';
 
 import { Card, CardContent } from '@/components/ui/card';
@@ -18,6 +19,7 @@ import { AdminStats } from './components/admin-stats';
 import { PromptForm } from './components/prompt-form';
 import { PromptsList } from './components/prompts-list';
 import { SettingsForm } from './components/settings-form';
+import { UserInfoForm } from '@/components/custom/user-info-form';
 
 interface Prompt {
   id: string;
@@ -68,6 +70,17 @@ export default function ConfigPage() {
       </div>
 
       <div className="grid gap-12">
+        {/* Sección de Información Personal */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <User className="size-4 text-neutral-500" />
+            <h2 className="text-base font-medium">Información Personal</h2>
+          </div>
+          <div className="bg-white dark:bg-black rounded-2xl border shadow-[0_0_1px_rgba(0,0,0,0.1)] dark:shadow-[0_0_1px_rgba(255,255,255,0.1)]">
+            <UserInfoForm />
+          </div>
+        </section>
+
         {/* Sección de Prompts */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">

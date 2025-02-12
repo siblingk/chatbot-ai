@@ -39,6 +39,11 @@ export function Chat({
       id,
       modelId: selectedModelId,
       systemPrompt: systemPrompt?.content,
+      userProfile: {
+        nombre: userProfile?.nombre,
+        telefono: userProfile?.telefono,
+        ubicacion: userProfile?.ubicacion,
+      },
     },
     initialMessages,
     streamProtocol: 'text',

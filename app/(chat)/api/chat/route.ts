@@ -47,7 +47,7 @@ function formatMessageContent(message: CoreMessage): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, messages, modelId, systemPrompt } = body;
+    const { id, messages, modelId, systemPrompt, userProfile } = body;
 
     if (!id || !messages || !modelId) {
       return new Response('Missing required fields', { status: 400 });
@@ -92,20 +92,16 @@ export async function POST(request: Request) {
       messages: [formattedUserMessage],
     });
 
-    // Get system prompt
-    let finalSystemPrompt = systemPrompt;
-    if (!finalSystemPrompt) {
-      const supabase = await createClient();
-      const { data: defaultPrompt } = await supabase
-        .from('prompts')
-        .select('content')
-        .is('user_id', null)
-        .eq('is_default', true)
-        .single();
+    // Construir el prompt del sistema con la información del usuario
+    let finalSystemPrompt = systemPrompt || '';
+    if (userProfile?.nombre) {
+      finalSystemPrompt = `${finalSystemPrompt}
 
-      if (defaultPrompt) {
-        finalSystemPrompt = defaultPrompt.content;
-      }
+RECUERDA: El usuario actual es ${userProfile.nombre}.
+${userProfile.ubicacion ? `Se encuentra en ${userProfile.ubicacion}.` : ''}
+${userProfile.telefono ? `Tiene registrado el teléfono que termina en ${userProfile.telefono.slice(-2)}.` : ''}
+
+Usa esta información para personalizar tus respuestas y referirte al usuario por su nombre.`;
     }
 
     const responseMessageId = generateUUID();
