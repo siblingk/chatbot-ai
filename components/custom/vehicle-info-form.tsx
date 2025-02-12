@@ -10,18 +10,10 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardDescription,
-  CardTitle,
-} from '@/components/ui/card';
 
 const vehicleSchema = z.object({
   brand: z.string().min(1, 'Brand is required'),
@@ -55,36 +47,39 @@ export function VehicleInfoForm({ onSubmit }: VehicleInfoFormProps) {
   });
 
   return (
-    <div className="mx-auto w-full max-w-2xl px-4">
-      <div className="flex flex-col items-center justify-center text-center mb-8">
-        <h1 className="text-2xl font-bold">Welcome to Siblingk AI</h1>
-        <p className="text-muted-foreground mt-2">
-          Your personal automotive expert assistant. Let&apos;s start by getting
-          to know your vehicle.
-        </p>
-      </div>
+    <div className="mx-auto w-full max-w-2xl px-4 md:px-0">
+      <div className="flex flex-col items-center justify-center space-y-8 text-center">
+        <div className="flex flex-col items-center space-y-4">
+          <div className="rounded-full bg-primary/10 p-3">
+            <Car className="h-6 w-6 text-primary" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight">
+              Welcome to Siblingk AI
+            </h1>
+            <p className="text-muted-foreground">
+              Let&apos;s get started by learning about your vehicle
+            </p>
+          </div>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <Car className="h-5 w-5" />
-            <span>Vehicle Information</span>
-          </CardTitle>
-          <CardDescription>
-            Please provide your vehicle details to get personalized assistance
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <Form {...form}>
+          <form
+            onSubmit={form.handleSubmit(onSubmit)}
+            className="w-full space-y-6"
+          >
+            <div className="grid gap-6 md:grid-cols-3">
               <FormField
                 control={form.control}
                 name="brand"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Brand</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Toyota" {...field} />
+                      <Input
+                        placeholder="Brand (e.g. Toyota)"
+                        {...field}
+                        className="h-12 bg-muted/50"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -96,9 +91,12 @@ export function VehicleInfoForm({ onSubmit }: VehicleInfoFormProps) {
                 name="model"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Model</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. Corolla" {...field} />
+                      <Input
+                        placeholder="Model (e.g. Corolla)"
+                        {...field}
+                        className="h-12 bg-muted/50"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -110,28 +108,25 @@ export function VehicleInfoForm({ onSubmit }: VehicleInfoFormProps) {
                 name="year"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Year</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. 2020" {...field} maxLength={4} />
+                      <Input
+                        placeholder="Year (e.g. 2020)"
+                        {...field}
+                        maxLength={4}
+                        className="h-12 bg-muted/50"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+            </div>
 
-              <div className="flex justify-end">
-                <Button type="submit">Start Chat</Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-
-      <div className="mt-6 text-center text-sm text-muted-foreground">
-        <p>
-          Get expert advice on maintenance, repairs, and everything about your
-          vehicle
-        </p>
+            <Button type="submit" size="lg" className="w-full md:w-auto">
+              Start Chat
+            </Button>
+          </form>
+        </Form>
       </div>
     </div>
   );

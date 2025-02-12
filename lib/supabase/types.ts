@@ -18,6 +18,9 @@ export interface Database {
           user_id: string;
           created_at: string;
           updated_at: string;
+          vehicle_brand: string | null;
+          vehicle_model: string | null;
+          vehicle_year: string | null;
         };
         Insert: {
           id?: string;
@@ -25,6 +28,9 @@ export interface Database {
           user_id: string;
           created_at?: string;
           updated_at?: string;
+          vehicle_brand?: string | null;
+          vehicle_model?: string | null;
+          vehicle_year?: string | null;
         };
         Update: {
           id?: string;
@@ -32,6 +38,9 @@ export interface Database {
           user_id?: string;
           created_at?: string;
           updated_at?: string;
+          vehicle_brand?: string | null;
+          vehicle_model?: string | null;
+          vehicle_year?: string | null;
         };
         Relationships: [
           {

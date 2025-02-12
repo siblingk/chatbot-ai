@@ -47,9 +47,18 @@ function formatMessageContent(message: CoreMessage): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, messages, modelId, systemPrompt, userProfile, title } = body;
+    const {
+      id,
+      messages,
+      modelId,
+      systemPrompt,
+      userProfile,
+      title,
+      vehicleInfo,
+    } = body;
 
     if (!id) {
+      console.error('Missing chat ID');
       return new Response('Missing required fields', { status: 400 });
     }
 
@@ -57,20 +66,102 @@ export async function POST(request: Request) {
 
     // Get or create chat
     const chat = await getChatById(id);
-    if (!chat) {
-      const chatTitle =
-        title ||
-        (await generateTitleFromUserMessage({
-          message: messages?.[messages.length - 1],
-        }));
-      await saveChat({ id, userId: user.id, title: chatTitle });
-    } else if (chat.user_id !== user.id) {
-      return new Response('Unauthorized', { status: 401 });
+
+    try {
+      if (!chat) {
+        const chatTitle =
+          title ||
+          (await generateTitleFromUserMessage({
+            message: messages?.[messages.length - 1],
+          }));
+
+        // Crear el chat con la información del vehículo
+        const supabase = await createClient();
+        const { data: newChat, error: createError } = await supabase
+          .from('chats')
+          .insert({
+            id,
+            title: chatTitle,
+            user_id: user.id,
+            vehicle_brand: vehicleInfo?.brand || null,
+            vehicle_model: vehicleInfo?.model || null,
+            vehicle_year: vehicleInfo?.year || null,
+          })
+          .select()
+          .single();
+
+        if (createError) {
+          console.error('Error creating chat:', createError);
+          return new Response(
+            JSON.stringify({
+              error: 'Error creating chat',
+              details: createError,
+            }),
+            {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        }
+
+        console.log('Chat created successfully:', newChat);
+      } else if (chat.user_id !== user.id) {
+        return new Response('Unauthorized', { status: 401 });
+      } else if (title || vehicleInfo) {
+        // Si el chat existe y se proporciona un título o información del vehículo, actualizarlo
+        const supabase = await createClient();
+        const { error: updateError } = await supabase
+          .from('chats')
+          .update({
+            title: title || chat.title,
+            vehicle_brand: vehicleInfo?.brand || chat.vehicle_brand,
+            vehicle_model: vehicleInfo?.model || chat.vehicle_model,
+            vehicle_year: vehicleInfo?.year || chat.vehicle_year,
+          })
+          .eq('id', id);
+
+        if (updateError) {
+          console.error('Error updating chat:', updateError);
+          return new Response(
+            JSON.stringify({
+              error: 'Error updating chat',
+              details: updateError,
+            }),
+            {
+              status: 500,
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+        }
+      }
+    } catch (error) {
+      console.error('Database operation error:', error);
+      return new Response(
+        JSON.stringify({ error: 'Database operation failed', details: error }),
+        {
+          status: 500,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
-    // Si solo estamos creando el chat (sin mensajes), retornamos aquí
+    // Si solo estamos creando/actualizando el chat (sin mensajes), retornamos aquí
     if (!messages || !modelId) {
-      return new Response('Chat created successfully', { status: 200 });
+      return new Response(
+        JSON.stringify({ message: 'Chat created/updated successfully' }),
+        {
+          status: 200,
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
     }
 
     const model = models.find((m) => m.id === modelId);
@@ -111,11 +202,11 @@ ${userProfile.ubicacion ? `- Location: ${userProfile.ubicacion}` : ''}
 ${userProfile.telefono ? `- Phone: ends in ${userProfile.telefono.slice(-2)}` : ''}
 
 ${
-  body.vehicleInfo
+  vehicleInfo
     ? `VEHICLE INFORMATION:
-- Brand: ${body.vehicleInfo.brand}
-- Model: ${body.vehicleInfo.model}
-- Year: ${body.vehicleInfo.year}`
+- Brand: ${vehicleInfo.brand}
+- Model: ${vehicleInfo.model}
+- Year: ${vehicleInfo.year}`
     : ''
 }
 

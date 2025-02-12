@@ -9,9 +9,10 @@ import { ChatHeader } from '@/components/custom/chat-header';
 import { PreviewMessage, ThinkingMessage } from '@/components/custom/message';
 import { useScrollToBottom } from '@/components/custom/use-scroll-to-bottom';
 import { Database } from '@/lib/supabase/types';
-import { fetcher } from '@/lib/utils';
+import { fetcher, generateUUID } from '@/lib/utils';
 import type { Prompt } from '@/ai/prompts';
-import type { AISettings, User } from '@/lib/supabase/types';
+import type { AISettings, User, Chat as ChatType } from '@/lib/supabase/types';
+import { createClient } from '@/lib/supabase/client';
 
 import { MultimodalInput } from './multimodal-input';
 import { Overview } from './overview';
@@ -19,7 +20,7 @@ import { UserInfoModal } from './user-info-modal';
 import { VehicleInfoForm } from './vehicle-info-form';
 
 export function Chat({
-  id,
+  id: initialId,
   initialMessages,
   selectedModelId,
 }: {
@@ -27,8 +28,10 @@ export function Chat({
   initialMessages: Array<Message>;
   selectedModelId: string;
 }) {
+  const [id, setId] = useState(initialId);
   const { data: systemPrompt } = useSWR<Prompt>('/api/prompt', fetcher);
   const { data: userProfile } = useSWR<User>('/api/user-profile', fetcher);
+  const { data: chat } = useSWR<ChatType>(`/api/chat/${id}`, fetcher);
   const [showUserInfoModal, setShowUserInfoModal] = useState(false);
   const [vehicleInfo, setVehicleInfo] = useState<{
     brand: string;
@@ -73,30 +76,70 @@ export function Chat({
     }
   }, [userProfile]);
 
+  // Cargar la información del vehículo cuando el chat se carga
+  useEffect(() => {
+    if (chat?.title) {
+      const parts = chat.title.split(' ');
+      if (parts.length >= 3) {
+        setVehicleInfo({
+          year: parts[0],
+          brand: parts[1],
+          model: parts.slice(2).join(' '),
+        });
+      }
+    }
+  }, [chat]);
+
   const handleVehicleSubmit = async (data: {
     brand: string;
     model: string;
     year: string;
   }) => {
-    setVehicleInfo(data);
-
-    // Crear el chat con el título del vehículo
     try {
+      if (!userProfile?.id) {
+        console.error('User profile not found');
+        return;
+      }
+
+      const newId = generateUUID();
+      setId(newId);
+      setVehicleInfo(data);
       const title = `${data.year} ${data.brand} ${data.model}`;
 
-      // Creamos/actualizamos el chat con el título
-      await fetch('/api/chat', {
+      console.log('Sending chat creation request:', {
+        id: newId,
+        title,
+        vehicleInfo: data,
+      });
+
+      // Crear/actualizar el chat usando el endpoint
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          id,
+          id: newId,
           title,
+          vehicleInfo: data,
         }),
       });
+
+      const responseData = await response.json();
+
+      if (!response.ok) {
+        console.error('Error response from server:', responseData);
+        throw new Error(responseData.error || 'Failed to save chat');
+      }
+
+      console.log('Chat saved successfully:', responseData);
+
+      // Redirigir al nuevo chat
+      window.history.pushState({}, '', `/chat/${newId}`);
     } catch (error) {
-      console.error('Error creating chat:', error);
+      console.error('Error saving chat:', error);
+      setVehicleInfo(null); // Revertir el estado si hay un error
+      setId(initialId); // Revertir el ID si hay un error
     }
   };
 
@@ -110,7 +153,8 @@ export function Chat({
         >
           {messages.length === 0 &&
             initialMessages.length === 0 &&
-            !vehicleInfo && <VehicleInfoForm onSubmit={handleVehicleSubmit} />}
+            !vehicleInfo &&
+            !chat?.title && <VehicleInfoForm onSubmit={handleVehicleSubmit} />}
 
           {messages.length === 0 &&
             initialMessages.length === 0 &&
