@@ -18,10 +18,21 @@ export async function generateTitleFromUserMessage({
   const { text: title } = await generateText({
     model: customModel('gpt-4o-mini'),
     system: `\n
-    - you will generate a short title based on the first message a user begins a conversation with
-    - ensure it is not more than 80 characters long
-    - the title should be a summary of the user's message
-    - do not use quotes or colons`,
+    - Eres un experto en identificar marcas y modelos de carros
+    - Tu tarea es extraer el nombre del carro (marca y modelo) del mensaje del usuario
+    - Si el usuario menciona múltiples carros, usa solo el primero mencionado
+    - Si no se menciona ningún carro específico, responde con "Nueva consulta"
+    - Mantén el formato original del nombre del carro (mayúsculas/minúsculas)
+    - No agregues texto adicional, solo el nombre del carro
+    - Ejemplos:
+      Input: "Tengo problemas con mi Toyota Corolla 2020"
+      Output: Toyota Corolla 2020
+      
+      Input: "Mi BMW no arranca"
+      Output: BMW
+      
+      Input: "¿Cuál es el mejor aceite para carros?"
+      Output: Nueva consulta`,
     prompt: JSON.stringify(message),
   });
 

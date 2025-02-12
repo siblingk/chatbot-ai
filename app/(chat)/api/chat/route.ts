@@ -47,13 +47,32 @@ function formatMessageContent(message: CoreMessage): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { id, messages, modelId, systemPrompt, userProfile } = body;
+    const { id, messages, modelId, systemPrompt, userProfile, title } = body;
 
-    if (!id || !messages || !modelId) {
+    if (!id) {
       return new Response('Missing required fields', { status: 400 });
     }
 
     const user = await getUser();
+
+    // Get or create chat
+    const chat = await getChatById(id);
+    if (!chat) {
+      const chatTitle =
+        title ||
+        (await generateTitleFromUserMessage({
+          message: messages?.[messages.length - 1],
+        }));
+      await saveChat({ id, userId: user.id, title: chatTitle });
+    } else if (chat.user_id !== user.id) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    // Si solo estamos creando el chat (sin mensajes), retornamos aquí
+    if (!messages || !modelId) {
+      return new Response('Chat created successfully', { status: 200 });
+    }
+
     const model = models.find((m) => m.id === modelId);
 
     if (!model) {
@@ -65,17 +84,6 @@ export async function POST(request: Request) {
 
     if (!userMessage) {
       return new Response('No user message found', { status: 400 });
-    }
-
-    // Get or create chat
-    const chat = await getChatById(id);
-    if (!chat) {
-      const title = await generateTitleFromUserMessage({
-        message: userMessage,
-      });
-      await saveChat({ id, userId: user.id, title });
-    } else if (chat.user_id !== user.id) {
-      return new Response('Unauthorized', { status: 401 });
     }
 
     // Save user message
@@ -92,16 +100,27 @@ export async function POST(request: Request) {
       messages: [formattedUserMessage],
     });
 
-    // Construir el prompt del sistema con la información del usuario
+    // Construir el prompt del sistema con la información del usuario y vehículo
     let finalSystemPrompt = systemPrompt || '';
     if (userProfile?.nombre) {
       finalSystemPrompt = `${finalSystemPrompt}
 
-RECUERDA: El usuario actual es ${userProfile.nombre}.
-${userProfile.ubicacion ? `Se encuentra en ${userProfile.ubicacion}.` : ''}
-${userProfile.telefono ? `Tiene registrado el teléfono que termina en ${userProfile.telefono.slice(-2)}.` : ''}
+USER INFORMATION:
+- Name: ${userProfile.nombre}
+${userProfile.ubicacion ? `- Location: ${userProfile.ubicacion}` : ''}
+${userProfile.telefono ? `- Phone: ends in ${userProfile.telefono.slice(-2)}` : ''}
 
-Usa esta información para personalizar tus respuestas y referirte al usuario por su nombre.`;
+${
+  body.vehicleInfo
+    ? `VEHICLE INFORMATION:
+- Brand: ${body.vehicleInfo.brand}
+- Model: ${body.vehicleInfo.model}
+- Year: ${body.vehicleInfo.year}`
+    : ''
+}
+
+Use this information to personalize your responses and refer to the user by name.
+When mentioning the vehicle, use its complete information (brand, model, and year).`;
     }
 
     const responseMessageId = generateUUID();

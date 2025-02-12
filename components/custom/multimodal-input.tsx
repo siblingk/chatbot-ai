@@ -59,8 +59,8 @@ export function MultimodalInput({
         onKeyDown={handleKeyDown}
         placeholder={
           disabled
-            ? 'Por favor completa tu información personal primero'
-            : 'Envía un mensaje...'
+            ? 'Please complete your personal information first'
+            : 'Send a message...'
         }
         spellCheck={false}
         className="min-h-[60px] w-full resize-none bg-background px-4 py-[1.3rem] focus-within:outline-none sm:text-sm"

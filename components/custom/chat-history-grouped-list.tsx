@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { memo } from 'react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ import {
 import { Chat } from '@/lib/supabase/types';
 
 import { MoreHorizontalIcon, TrashIcon } from './icons';
+import { Car } from 'lucide-react';
 
 type GroupedChats = {
   today: Chat[];
@@ -52,23 +54,43 @@ const ChatItem = memo(function ChatItem({
   setOpenMobile: (open: boolean) => void;
 }) {
   return (
-    <SidebarMenuItem className={isActive ? 'bg-sidebar-accent' : ''}>
+    <SidebarMenuItem>
       <Link
         href={`/chat/${chat.id}`}
         onClick={() => setOpenMobile(false)}
-        className="flex w-full items-center justify-between"
+        className={cn(
+          'flex w-full items-center justify-between rounded-md px-2 py-1.5 transition-colors',
+          isActive ? 'bg-primary text-primary-foreground' : 'hover:bg-muted/50'
+        )}
       >
-        <span className="truncate">{chat.title || 'Nueva conversación'}</span>
+        <div className="flex items-center gap-2 truncate">
+          <div
+            className={cn(
+              'shrink-0',
+              isActive ? 'text-primary-foreground' : 'text-muted-foreground'
+            )}
+          >
+            <Car size={16} />
+          </div>
+          <span className="truncate">{chat.title || 'New Chat'}</span>
+        </div>
         <DropdownMenu>
           <DropdownMenuTrigger>
-            <button className="rounded-md p-1 hover:bg-sidebar-accent">
-              <MoreHorizontalIcon />
+            <button
+              className={cn(
+                'rounded-md p-1',
+                isActive ? 'hover:bg-primary/10' : 'hover:bg-muted'
+              )}
+            >
+              <div className={isActive ? 'text-primary-foreground' : ''}>
+                <MoreHorizontalIcon />
+              </div>
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem onClick={() => onDelete(chat.id)}>
               <TrashIcon />
-              <span>Eliminar chat</span>
+              <span>Delete chat</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
