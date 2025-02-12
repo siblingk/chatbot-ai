@@ -6,6 +6,7 @@ import {
   BrainCircuit,
   FileJson,
   MessageSquare,
+  Settings,
   Shield,
 } from 'lucide-react';
 
@@ -16,6 +17,7 @@ import { createClient } from '@/lib/supabase/client';
 import { AdminStats } from './components/admin-stats';
 import { PromptForm } from './components/prompt-form';
 import { PromptsList } from './components/prompts-list';
+import { SettingsForm } from './components/settings-form';
 
 interface Prompt {
   id: string;
@@ -58,6 +60,15 @@ export default function ConfigPage() {
 
   return (
     <div className="space-y-12">
+      {/* Sección de Configuración */}
+      <section>
+        <div className="mb-4 flex items-center gap-2">
+          <Settings className="size-5" />
+          <h2 className="text-lg font-semibold">Configuración</h2>
+        </div>
+        <SettingsForm />
+      </section>
+
       {/* Sección de Prompts */}
       <section>
         <div className="mb-4 flex items-center gap-2">

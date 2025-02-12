@@ -8,36 +8,35 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[];
 
-export type Database = {
+export interface Database {
   public: {
     Tables: {
       chats: {
         Row: {
-          created_at: string;
           id: string;
           title: string | null;
-          updated_at: string;
           user_id: string;
+          created_at: string;
+          updated_at: string;
         };
         Insert: {
-          created_at?: string;
           id?: string;
           title?: string | null;
-          updated_at?: string;
           user_id: string;
+          created_at?: string;
+          updated_at?: string;
         };
         Update: {
-          created_at?: string;
           id?: string;
           title?: string | null;
-          updated_at?: string;
           user_id?: string;
+          created_at?: string;
+          updated_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'chats_user_id_fkey';
             columns: ['user_id'];
-            isOneToOne: false;
             referencedRelation: 'users';
             referencedColumns: ['id'];
           },
@@ -45,171 +44,65 @@ export type Database = {
       };
       documents: {
         Row: {
-          content: string | null;
-          created_at: string;
           id: string;
           title: string;
+          content: string | null;
           user_id: string;
+          created_at: string;
         };
         Insert: {
-          content?: string | null;
-          created_at?: string;
           id?: string;
           title: string;
+          content?: string | null;
           user_id: string;
+          created_at?: string;
         };
         Update: {
-          content?: string | null;
-          created_at?: string;
           id?: string;
           title?: string;
+          content?: string | null;
           user_id?: string;
+          created_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'documents_user_id_fkey';
             columns: ['user_id'];
-            isOneToOne: false;
             referencedRelation: 'users';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      file_uploads: {
-        Row: {
-          bucket_id: string;
-          chat_id: string;
-          content_type: string;
-          created_at: string;
-          filename: string;
-          id: string;
-          original_name: string;
-          size: number;
-          storage_path: string;
-          url: string;
-          user_id: string;
-          version: number;
-        };
-        Insert: {
-          bucket_id?: string;
-          chat_id: string;
-          content_type: string;
-          created_at?: string;
-          filename: string;
-          id?: string;
-          original_name: string;
-          size: number;
-          storage_path: string;
-          url: string;
-          user_id: string;
-          version?: number;
-        };
-        Update: {
-          bucket_id?: string;
-          chat_id?: string;
-          content_type?: string;
-          created_at?: string;
-          filename?: string;
-          id?: string;
-          original_name?: string;
-          size?: number;
-          storage_path?: string;
-          url?: string;
-          user_id?: string;
-          version?: number;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'file_uploads_chat_id_fkey';
-            columns: ['chat_id'];
-            isOneToOne: false;
-            referencedRelation: 'chats';
             referencedColumns: ['id'];
           },
         ];
       };
       messages: {
         Row: {
+          id: string;
           chat_id: string;
+          role: string;
           content: Json;
           created_at: string;
-          id: string;
-          role: string;
           updated_at: string;
         };
         Insert: {
+          id?: string;
           chat_id: string;
+          role: string;
           content: Json;
           created_at?: string;
-          id?: string;
-          role: string;
           updated_at?: string;
         };
         Update: {
+          id?: string;
           chat_id?: string;
+          role?: string;
           content?: Json;
           created_at?: string;
-          id?: string;
-          role?: string;
           updated_at?: string;
         };
         Relationships: [
           {
             foreignKeyName: 'messages_chat_id_fkey';
             columns: ['chat_id'];
-            isOneToOne: false;
             referencedRelation: 'chats';
-            referencedColumns: ['id'];
-          },
-        ];
-      };
-      suggestions: {
-        Row: {
-          created_at: string;
-          description: string | null;
-          document_created_at: string;
-          document_id: string;
-          id: string;
-          is_resolved: boolean;
-          original_text: string;
-          suggested_text: string;
-          user_id: string;
-        };
-        Insert: {
-          created_at?: string;
-          description?: string | null;
-          document_created_at: string;
-          document_id: string;
-          id?: string;
-          is_resolved?: boolean;
-          original_text: string;
-          suggested_text: string;
-          user_id: string;
-        };
-        Update: {
-          created_at?: string;
-          description?: string | null;
-          document_created_at?: string;
-          document_id?: string;
-          id?: string;
-          is_resolved?: boolean;
-          original_text?: string;
-          suggested_text?: string;
-          user_id?: string;
-        };
-        Relationships: [
-          {
-            foreignKeyName: 'suggestions_document_id_document_created_at_fkey';
-            columns: ['document_id', 'document_created_at'];
-            isOneToOne: false;
-            referencedRelation: 'documents';
-            referencedColumns: ['id', 'created_at'];
-          },
-          {
-            foreignKeyName: 'suggestions_user_id_fkey';
-            columns: ['user_id'];
-            isOneToOne: false;
-            referencedRelation: 'users';
             referencedColumns: ['id'];
           },
         ];
@@ -217,7 +110,7 @@ export type Database = {
       prompts: {
         Row: {
           id: string;
-          user_id: string;
+          user_id: string | null;
           name: string;
           content: string;
           is_default: boolean;
@@ -226,7 +119,7 @@ export type Database = {
         };
         Insert: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           name: string;
           content: string;
           is_default?: boolean;
@@ -235,7 +128,7 @@ export type Database = {
         };
         Update: {
           id?: string;
-          user_id?: string;
+          user_id?: string | null;
           name?: string;
           content?: string;
           is_default?: boolean;
@@ -246,7 +139,141 @@ export type Database = {
           {
             foreignKeyName: 'prompts_user_id_fkey';
             columns: ['user_id'];
-            isOneToOne: false;
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      suggestions: {
+        Row: {
+          id: string;
+          document_id: string;
+          document_created_at: string;
+          original_text: string;
+          suggested_text: string;
+          description: string | null;
+          is_resolved: boolean;
+          user_id: string;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          document_id: string;
+          document_created_at: string;
+          original_text: string;
+          suggested_text: string;
+          description?: string | null;
+          is_resolved?: boolean;
+          user_id: string;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          document_id?: string;
+          document_created_at?: string;
+          original_text?: string;
+          suggested_text?: string;
+          description?: string | null;
+          is_resolved?: boolean;
+          user_id?: string;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'suggestions_document_id_document_created_at_fkey';
+            columns: ['document_id', 'document_created_at'];
+            referencedRelation: 'documents';
+            referencedColumns: ['id', 'created_at'];
+          },
+          {
+            foreignKeyName: 'suggestions_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user_settings: {
+        Row: {
+          id: string;
+          user_id: string;
+          nivel_tono: number;
+          nivel_tecnico: number;
+          longitud_respuesta: number;
+          nivel_urgencia: boolean;
+          sensibilidad_precio: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          nivel_tono?: number;
+          nivel_tecnico?: number;
+          longitud_respuesta?: number;
+          nivel_urgencia?: boolean;
+          sensibilidad_precio?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          nivel_tono?: number;
+          nivel_tecnico?: number;
+          longitud_respuesta?: number;
+          nivel_urgencia?: boolean;
+          sensibilidad_precio?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_settings_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
+      user_info: {
+        Row: {
+          id: string;
+          user_id: string;
+          nombre_cliente: string | null;
+          info_vehiculo: string | null;
+          historial_servicio: string | null;
+          ubicacion: string | null;
+          idioma: string;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          nombre_cliente?: string | null;
+          info_vehiculo?: string | null;
+          historial_servicio?: string | null;
+          ubicacion?: string | null;
+          idioma?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          nombre_cliente?: string | null;
+          info_vehiculo?: string | null;
+          historial_servicio?: string | null;
+          ubicacion?: string | null;
+          idioma?: string;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'user_info_user_id_fkey';
+            columns: ['user_id'];
             referencedRelation: 'users';
             referencedColumns: ['id'];
           },
@@ -256,54 +283,61 @@ export type Database = {
         Row: {
           id: string;
           email: string;
+          role: string;
+          nombre: string | null;
+          telefono: string | null;
+          ubicacion: string | null;
           created_at: string;
           updated_at: string;
-          role: 'user' | 'admin';
         };
         Insert: {
           id?: string;
           email: string;
+          role?: string;
+          nombre?: string | null;
+          telefono?: string | null;
+          ubicacion?: string | null;
           created_at?: string;
           updated_at?: string;
-          role?: 'user' | 'admin';
         };
         Update: {
           id?: string;
           email?: string;
+          role?: string;
+          nombre?: string | null;
+          telefono?: string | null;
+          ubicacion?: string | null;
           created_at?: string;
           updated_at?: string;
-          role?: 'user' | 'admin';
         };
         Relationships: [];
       };
       votes: {
         Row: {
           chat_id: string;
-          is_upvoted: boolean;
           message_id: string;
+          is_upvoted: boolean;
         };
         Insert: {
           chat_id: string;
-          is_upvoted: boolean;
           message_id: string;
+          is_upvoted: boolean;
         };
         Update: {
           chat_id?: string;
-          is_upvoted?: boolean;
           message_id?: string;
+          is_upvoted?: boolean;
         };
         Relationships: [
           {
             foreignKeyName: 'votes_chat_id_fkey';
             columns: ['chat_id'];
-            isOneToOne: false;
             referencedRelation: 'chats';
             referencedColumns: ['id'];
           },
           {
             foreignKeyName: 'votes_message_id_fkey';
             columns: ['message_id'];
-            isOneToOne: false;
             referencedRelation: 'messages';
             referencedColumns: ['id'];
           },
@@ -395,21 +429,52 @@ export type Database = {
           is_default: boolean;
           created_at: string;
           updated_at: string;
+          user_id: string | null;
         }[];
       };
       get_admin_count: {
         Args: Record<PropertyKey, never>;
         Returns: number;
       };
+      get_user_settings: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          nivel_tono: number;
+          nivel_tecnico: number;
+          longitud_respuesta: number;
+          nivel_urgencia: boolean;
+          sensibilidad_precio: number;
+          created_at: string;
+          updated_at: string;
+        }[];
+      };
+      get_user_info: {
+        Args: Record<PropertyKey, never>;
+        Returns: {
+          id: string;
+          nombre_cliente: string | null;
+          info_vehiculo: string | null;
+          historial_servicio: string | null;
+          ubicacion: string | null;
+          idioma: string;
+          created_at: string;
+          updated_at: string;
+        }[];
+      };
+      is_admin: {
+        Args: Record<PropertyKey, never>;
+        Returns: boolean;
+      };
     };
     Enums: {
-      [_ in never]: never;
+      user_role: 'user' | 'admin';
     };
     CompositeTypes: {
       [_ in never]: never;
     };
   };
-};
+}
 
 type PublicSchema = Database[Extract<keyof Database, 'public'>];
 
@@ -510,7 +575,7 @@ export type CompositeTypes<
 
 export type Client = SupabaseClient<Database>;
 
-export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
+export type MessageRole = 'system' | 'user' | 'assistant' | 'function';
 
 // Add types for tool invocations and annotations
 export interface ToolInvocation {
@@ -664,4 +729,24 @@ export interface FileUpload {
 export interface StorageError {
   message: string;
   statusCode: string;
+}
+
+export type User = Database['public']['Tables']['users']['Row'];
+export type UserSettings = Database['public']['Tables']['user_settings']['Row'];
+export type UserInfo = Database['public']['Tables']['user_info']['Row'];
+export type UserSettingsResponse =
+  Database['public']['Functions']['get_user_settings']['Returns'][0];
+export type UserInfoResponse =
+  Database['public']['Functions']['get_user_info']['Returns'][0];
+
+export interface AISettings {
+  id: string;
+  user_id: string;
+  nivel_tono: number;
+  nivel_tecnico: number;
+  longitud_respuesta: number;
+  nivel_urgencia: boolean;
+  sensibilidad_precio: number;
+  created_at: string;
+  updated_at: string;
 }

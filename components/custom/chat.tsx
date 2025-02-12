@@ -1,11 +1,9 @@
 'use client';
 
-import { Attachment, Message } from 'ai';
+import { Message } from 'ai';
 import { useChat } from 'ai/react';
-import { AnimatePresence } from 'framer-motion';
 import { useState, useEffect } from 'react';
-import useSWR, { useSWRConfig } from 'swr';
-import { useWindowSize } from 'usehooks-ts';
+import useSWR from 'swr';
 
 import { ChatHeader } from '@/components/custom/chat-header';
 import { PreviewMessage, ThinkingMessage } from '@/components/custom/message';
@@ -13,11 +11,11 @@ import { useScrollToBottom } from '@/components/custom/use-scroll-to-bottom';
 import { Database } from '@/lib/supabase/types';
 import { fetcher } from '@/lib/utils';
 import type { Prompt } from '@/ai/prompts';
+import type { AISettings, User } from '@/lib/supabase/types';
 
-import { Block, UIBlock } from './block';
-import { BlockStreamHandler } from './block-stream-handler';
 import { MultimodalInput } from './multimodal-input';
 import { Overview } from './overview';
+import { UserInfoModal } from './user-info-modal';
 
 type Vote = Database['public']['Tables']['votes']['Row'];
 
@@ -30,32 +28,11 @@ export function Chat({
   initialMessages: Array<Message>;
   selectedModelId: string;
 }) {
-  const { mutate } = useSWRConfig();
   const { data: systemPrompt } = useSWR<Prompt>('/api/prompt', fetcher);
+  const { data: userProfile } = useSWR<User>('/api/user-profile', fetcher);
+  const [showUserInfoModal, setShowUserInfoModal] = useState(false);
 
-  useEffect(() => {
-    console.log('Prompt activo para el chat:', {
-      id: systemPrompt?.id,
-      name: systemPrompt?.name,
-      content: systemPrompt?.content,
-      is_default: systemPrompt?.is_default,
-      user_id: systemPrompt?.user_id,
-      created_at: systemPrompt?.created_at,
-      updated_at: systemPrompt?.updated_at,
-    });
-  }, [systemPrompt]);
-
-  const {
-    messages,
-    setMessages,
-    handleSubmit,
-    input,
-    setInput,
-    append,
-    isLoading,
-    stop,
-    data: streamingData,
-  } = useChat({
+  const { messages, input, setInput, handleSubmit, isLoading, stop } = useChat({
     api: '/api/chat',
     id,
     body: {
@@ -65,34 +42,8 @@ export function Chat({
     },
     initialMessages,
     streamProtocol: 'text',
-    onFinish: () => {
-      mutate('/api/history');
-    },
-    onResponse: (response) => {
-      if (!response.ok) {
-        console.error('Error en la respuesta:', response.statusText);
-        throw new Error('Error en la respuesta del chat');
-      }
-    },
     onError: (error) => {
-      console.error('Error en el chat:', error);
-    },
-  });
-
-  const { width: windowWidth = 1920, height: windowHeight = 1080 } =
-    useWindowSize();
-
-  const [block, setBlock] = useState<UIBlock>({
-    documentId: 'init',
-    content: '',
-    title: '',
-    status: 'idle',
-    isVisible: false,
-    boundingBox: {
-      top: windowHeight / 4,
-      left: windowWidth / 4,
-      width: 250,
-      height: 50,
+      console.error('Chat error:', error);
     },
   });
 
@@ -104,7 +55,18 @@ export function Chat({
   const [messagesContainerRef, messagesEndRef] =
     useScrollToBottom<HTMLDivElement>();
 
-  const [attachments, setAttachments] = useState<Array<Attachment>>([]);
+  // Verificar si el usuario tiene la información necesaria
+  useEffect(() => {
+    if (
+      userProfile === null ||
+      (userProfile &&
+        (!userProfile.nombre ||
+          !userProfile.telefono ||
+          !userProfile.ubicacion))
+    ) {
+      setShowUserInfoModal(true);
+    }
+  }, [userProfile]);
 
   return (
     <>
@@ -121,67 +83,39 @@ export function Chat({
               key={message.id}
               chatId={id}
               message={message}
-              block={block}
-              setBlock={setBlock}
-              isLoading={isLoading && messages.length - 1 === index}
-              vote={
-                votes
-                  ? votes.find((vote) => vote.message_id === message.id)
-                  : undefined
-              }
+              isLoading={isLoading && index === messages.length - 1}
+              vote={votes?.find((vote) => vote.message_id === message.id)}
             />
           ))}
 
-          {isLoading &&
-            messages.length > 0 &&
-            messages[messages.length - 1].role === 'user' && (
-              <ThinkingMessage />
-            )}
+          {isLoading && <ThinkingMessage />}
 
           <div
             ref={messagesEndRef}
             className="min-h-[24px] min-w-[24px] shrink-0"
           />
         </div>
-        <form className="mx-auto flex w-full gap-2 bg-background px-4 pb-4 md:max-w-3xl md:pb-6">
+        <div className="mx-auto w-full bg-background px-4 pb-4 md:max-w-3xl md:pb-6">
           <MultimodalInput
-            chatId={id}
             input={input}
             setInput={setInput}
             handleSubmit={handleSubmit}
             isLoading={isLoading}
             stop={stop}
-            attachments={attachments}
-            setAttachments={setAttachments}
-            messages={messages}
-            setMessages={setMessages}
-            append={append}
+            disabled={
+              !userProfile ||
+              !userProfile.nombre ||
+              !userProfile.telefono ||
+              !userProfile.ubicacion
+            }
           />
-        </form>
+        </div>
       </div>
 
-      <AnimatePresence>
-        {block && block.isVisible && (
-          <Block
-            chatId={id}
-            input={input}
-            setInput={setInput}
-            handleSubmit={handleSubmit}
-            isLoading={isLoading}
-            stop={stop}
-            attachments={attachments}
-            setAttachments={setAttachments}
-            append={append}
-            block={block}
-            setBlock={setBlock}
-            messages={messages}
-            setMessages={setMessages}
-            votes={votes}
-          />
-        )}
-      </AnimatePresence>
-
-      <BlockStreamHandler streamingData={streamingData} setBlock={setBlock} />
+      <UserInfoModal
+        isOpen={showUserInfoModal}
+        onOpenChange={setShowUserInfoModal}
+      />
     </>
   );
 }

@@ -12,21 +12,19 @@ import { SparklesIcon } from './icons';
 import { Markdown } from './markdown';
 import { MessageActions } from './message-actions';
 
-export const PreviewMessage = ({
-  chatId,
-  message,
-  block,
-  setBlock,
-  vote,
-  isLoading,
-}: {
+export interface PreviewMessageProps {
   chatId: string;
   message: Message;
-  block: UIBlock;
-  setBlock: Dispatch<SetStateAction<UIBlock>>;
-  vote: Vote | undefined;
   isLoading: boolean;
-}) => {
+  vote?: Vote;
+}
+
+export function PreviewMessage({
+  chatId,
+  message,
+  isLoading = false,
+  vote,
+}: PreviewMessageProps) {
   return (
     <motion.div
       className="group/message mx-auto w-full max-w-3xl px-4"
@@ -63,7 +61,7 @@ export const PreviewMessage = ({
       </div>
     </motion.div>
   );
-};
+}
 
 export const ThinkingMessage = () => {
   const role = 'assistant';

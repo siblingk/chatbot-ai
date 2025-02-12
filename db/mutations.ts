@@ -79,39 +79,17 @@ export async function saveMessages({
       const formattedMessages = messages.map((message) => {
         let content = message.content;
 
-        // Si el contenido es un objeto o array, convertirlo a formato de texto
+        // Si el contenido es un objeto o array, convertirlo a JSON string
         if (typeof content === 'object' && content !== null) {
-          if (Array.isArray(content)) {
-            content = JSON.stringify(content);
-          } else {
-            content = JSON.stringify([
-              { type: 'text', text: JSON.stringify(content) },
-            ]);
-          }
+          content = JSON.stringify(content);
         }
-        // Si es un string que parece JSON, validar que sea JSON válido
-        else if (
-          typeof content === 'string' &&
-          (content.startsWith('{') || content.startsWith('['))
-        ) {
-          try {
-            // Validar que sea JSON válido
-            JSON.parse(content);
-          } catch {
-            // Si no es JSON válido, convertirlo a formato de texto
-            content = JSON.stringify([{ type: 'text', text: content }]);
-          }
-        }
-        // Para strings simples, convertirlos a formato de texto
+        // Si es un string, dejarlo como está
         else if (typeof content === 'string') {
-          // Si es "[object Object]", lo reemplazamos con un mensaje más amigable
-          if (content === '[object Object]') {
-            content = JSON.stringify([
-              { type: 'text', text: 'Mensaje no disponible' },
-            ]);
-          } else {
-            content = JSON.stringify([{ type: 'text', text: content }]);
-          }
+          content = content;
+        }
+        // Para cualquier otro tipo, convertirlo a string
+        else {
+          content = String(content);
         }
 
         return {
