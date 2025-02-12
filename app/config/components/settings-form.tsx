@@ -1,18 +1,10 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
 import { Button } from '@/components/ui/button';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
 import {
   Form,
   FormControl,
@@ -26,7 +18,9 @@ import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
-import { UserSettings } from '@/lib/supabase/types';
+import { Database } from '@/lib/supabase/types';
+
+type AISettings = Database['public']['Tables']['ai_settings']['Row'];
 
 const settingsFormSchema = z.object({
   // Variables de Configuración
@@ -56,21 +50,30 @@ export function SettingsForm() {
   useEffect(() => {
     const fetchSettings = async () => {
       const supabase = createClient();
-      const { data: settings, error } = await supabase.rpc('get_user_settings');
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
 
-      if (error) {
+      if (!user?.id) return;
+
+      const { data: settings, error } = await supabase
+        .from('ai_settings')
+        .select()
+        .eq('user_id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching settings:', error);
         return;
       }
 
-      if (settings && settings.length > 0) {
-        const userSettings = settings[0];
+      if (settings) {
         form.reset({
-          nivel_tono: userSettings.nivel_tono,
-          nivel_tecnico: userSettings.nivel_tecnico,
-          longitud_respuesta: userSettings.longitud_respuesta,
-          nivel_urgencia: userSettings.nivel_urgencia,
-          sensibilidad_precio: userSettings.sensibilidad_precio,
+          nivel_tono: settings.nivel_tono,
+          nivel_tecnico: settings.nivel_tecnico,
+          longitud_respuesta: settings.longitud_respuesta,
+          nivel_urgencia: settings.nivel_urgencia,
+          sensibilidad_precio: settings.sensibilidad_precio,
         });
       }
     };
@@ -91,8 +94,7 @@ export function SettingsForm() {
         throw new Error('No se encontró el ID del usuario');
       }
 
-      // Crear el objeto de configuración con el tipo correcto
-      const settings: Omit<UserSettings, 'id' | 'created_at' | 'updated_at'> = {
+      const settings: Database['public']['Tables']['ai_settings']['Insert'] = {
         user_id: user.id,
         nivel_tono: values.nivel_tono,
         nivel_tecnico: values.nivel_tecnico,
@@ -102,164 +104,209 @@ export function SettingsForm() {
       };
 
       const { error } = await supabase
-        .from('user_settings')
-        .upsert(settings, { onConflict: 'user_id' });
+        .from('ai_settings')
+        .upsert(settings)
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error details:', error);
+        throw error;
+      }
 
       toast.success('Configuración actualizada exitosamente');
     } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('Error al guardar la configuración');
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : 'Error al guardar la configuración'
+      );
     } finally {
       setIsLoading(false);
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Configuración del Chat</CardTitle>
-        <CardDescription>
-          Personaliza cómo el asistente interactúa contigo y maneja tus
-          consultas.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Variables de Configuración */}
-            <div className="space-y-4">
-              <FormField
-                control={form.control}
-                name="nivel_tono"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nivel de Tono</FormLabel>
-                    <FormControl>
+    <div className="p-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
+          <div className="grid gap-10">
+            {/* Nivel de Tono */}
+            <FormField
+              control={form.control}
+              name="nivel_tono"
+              render={({ field }) => (
+                <FormItem className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-sm font-medium">Tono</FormLabel>
+                    <span className="text-xs text-neutral-500">
+                      {field.value}/5
+                    </span>
+                  </div>
+                  <FormControl>
+                    <div className="space-y-2">
                       <Slider
                         min={1}
                         max={5}
                         step={1}
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
-                        className="py-4"
+                        className="py-0.5"
                       />
-                    </FormControl>
-                    <FormDescription className="flex justify-between">
-                      <span>Casual</span>
-                      <span>Profesional</span>
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="nivel_tecnico"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nivel Técnico</FormLabel>
-                    <FormControl>
-                      <Slider
-                        min={1}
-                        max={5}
-                        step={1}
-                        value={[field.value]}
-                        onValueChange={(value) => field.onChange(value[0])}
-                        className="py-4"
-                      />
-                    </FormControl>
-                    <FormDescription className="flex justify-between">
-                      <span>Básico</span>
-                      <span>Detallado</span>
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="longitud_respuesta"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Longitud de Respuesta</FormLabel>
-                    <FormControl>
-                      <Slider
-                        min={1}
-                        max={5}
-                        step={1}
-                        value={[field.value]}
-                        onValueChange={(value) => field.onChange(value[0])}
-                        className="py-4"
-                      />
-                    </FormControl>
-                    <FormDescription className="flex justify-between">
-                      <span>Conciso</span>
-                      <span>Extenso</span>
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="nivel_urgencia"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                      <FormLabel className="text-base">
-                        Manejo de Urgencia
-                      </FormLabel>
-                      <FormDescription>
-                        Activa este modo para respuestas más rápidas y directas
-                      </FormDescription>
+                      <div className="flex justify-between text-[10px] text-neutral-500">
+                        <span>Casual</span>
+                        <span>Profesional</span>
+                      </div>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <FormField
-                control={form.control}
-                name="sensibilidad_precio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Sensibilidad al Precio</FormLabel>
-                    <FormControl>
+            {/* Nivel Técnico */}
+            <FormField
+              control={form.control}
+              name="nivel_tecnico"
+              render={({ field }) => (
+                <FormItem className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-sm font-medium">
+                      Nivel Técnico
+                    </FormLabel>
+                    <span className="text-xs text-neutral-500">
+                      {field.value}/5
+                    </span>
+                  </div>
+                  <FormControl>
+                    <div className="space-y-2">
                       <Slider
                         min={1}
                         max={5}
                         step={1}
                         value={[field.value]}
                         onValueChange={(value) => field.onChange(value[0])}
-                        className="py-4"
+                        className="py-0.5"
                       />
-                    </FormControl>
-                    <FormDescription className="flex justify-between">
-                      <span>Económico</span>
-                      <span>Premium</span>
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
+                      <div className="flex justify-between text-[10px] text-neutral-500">
+                        <span>Básico</span>
+                        <span>Avanzado</span>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Guardando...' : 'Guardar Configuración'}
+            {/* Longitud de Respuesta */}
+            <FormField
+              control={form.control}
+              name="longitud_respuesta"
+              render={({ field }) => (
+                <FormItem className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-sm font-medium">
+                      Longitud
+                    </FormLabel>
+                    <span className="text-xs text-neutral-500">
+                      {field.value}/5
+                    </span>
+                  </div>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <Slider
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={[field.value]}
+                        onValueChange={(value) => field.onChange(value[0])}
+                        className="py-0.5"
+                      />
+                      <div className="flex justify-between text-[10px] text-neutral-500">
+                        <span>Conciso</span>
+                        <span>Detallado</span>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Sensibilidad al Precio */}
+            <FormField
+              control={form.control}
+              name="sensibilidad_precio"
+              render={({ field }) => (
+                <FormItem className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <FormLabel className="text-sm font-medium">
+                      Presupuesto
+                    </FormLabel>
+                    <span className="text-xs text-neutral-500">
+                      {field.value}/5
+                    </span>
+                  </div>
+                  <FormControl>
+                    <div className="space-y-2">
+                      <Slider
+                        min={1}
+                        max={5}
+                        step={1}
+                        value={[field.value]}
+                        onValueChange={(value) => field.onChange(value[0])}
+                        className="py-0.5"
+                      />
+                      <div className="flex justify-between text-[10px] text-neutral-500">
+                        <span>Económico</span>
+                        <span>Premium</span>
+                      </div>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {/* Manejo de Urgencia */}
+            <FormField
+              control={form.control}
+              name="nivel_urgencia"
+              render={({ field }) => (
+                <FormItem className="flex items-center justify-between py-2">
+                  <div>
+                    <FormLabel className="text-sm font-medium">
+                      Modo Rápido
+                    </FormLabel>
+                    <FormDescription className="mt-0.5 text-xs text-neutral-500">
+                      Respuestas más concisas y directas
+                    </FormDescription>
+                  </div>
+                  <FormControl>
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      className="data-[state=checked]:bg-neutral-900 dark:data-[state=checked]:bg-neutral-100"
+                    />
+                  </FormControl>
+                </FormItem>
+              )}
+            />
+          </div>
+
+          <div className="flex justify-end pt-4">
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="min-w-[120px] bg-neutral-900 hover:bg-neutral-800 dark:bg-neutral-100 dark:text-neutral-900 dark:hover:bg-neutral-200"
+            >
+              {isLoading ? 'Guardando...' : 'Guardar'}
             </Button>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+          </div>
+        </form>
+      </Form>
+    </div>
   );
 }

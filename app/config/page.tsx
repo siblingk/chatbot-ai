@@ -59,40 +59,57 @@ export default function ConfigPage() {
   };
 
   return (
-    <div className="space-y-12">
-      {/* Sección de Configuración */}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <Settings className="size-5" />
-          <h2 className="text-lg font-semibold">Configuración</h2>
-        </div>
-        <SettingsForm />
-      </section>
+    <div className="container max-w-4xl mx-auto py-12 px-4 space-y-12">
+      <div className="flex flex-col gap-2">
+        <h1 className="text-4xl font-medium tracking-tight">Ajustes</h1>
+        <p className="text-sm text-muted-foreground">
+          Personaliza la experiencia de tu asistente
+        </p>
+      </div>
 
-      {/* Sección de Prompts */}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <FileJson className="size-5" />
-          <h2 className="text-lg font-semibold">Prompts</h2>
-        </div>
-        <PromptsList
-          initialPrompts={prompts as any}
-          onEdit={handleEditPrompt}
-        />
-      </section>
+      <div className="grid gap-12">
+        {/* Sección de Prompts */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FileJson className="size-4 text-neutral-500" />
+              <h2 className="text-base font-medium">Prompts</h2>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-black rounded-2xl border shadow-[0_0_1px_rgba(0,0,0,0.1)] dark:shadow-[0_0_1px_rgba(255,255,255,0.1)]">
+            <div className="p-6">
+              <PromptsList
+                initialPrompts={prompts as any}
+                onEdit={handleEditPrompt}
+              />
+            </div>
+          </div>
+        </section>
 
-      {/* Sección de Estadísticas */}
-      <section>
-        <div className="mb-4 flex items-center gap-2">
-          <BrainCircuit className="size-5" />
-          <h2 className="text-lg font-semibold">Estadísticas</h2>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <AdminStats />
-          </CardContent>
-        </Card>
-      </section>
+        {/* Sección de Configuración */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <Settings className="size-4 text-neutral-500" />
+            <h2 className="text-base font-medium">Preferencias</h2>
+          </div>
+          <div className="bg-white dark:bg-black rounded-2xl border shadow-[0_0_1px_rgba(0,0,0,0.1)] dark:shadow-[0_0_1px_rgba(255,255,255,0.1)]">
+            <SettingsForm />
+          </div>
+        </section>
+
+        {/* Sección de Estadísticas */}
+        <section className="space-y-6">
+          <div className="flex items-center gap-2">
+            <BrainCircuit className="size-4 text-neutral-500" />
+            <h2 className="text-base font-medium">Análisis</h2>
+          </div>
+          <div className="bg-white dark:bg-black rounded-2xl border shadow-[0_0_1px_rgba(0,0,0,0.1)] dark:shadow-[0_0_1px_rgba(255,255,255,0.1)]">
+            <div className="p-6">
+              <AdminStats />
+            </div>
+          </div>
+        </section>
+      </div>
 
       <PromptForm
         prompt={editingPrompt as any}

@@ -88,7 +88,11 @@ export function Chat({
             />
           ))}
 
-          {isLoading && <ThinkingMessage />}
+          {isLoading &&
+            (!messages.length ||
+              messages[messages.length - 1].role !== 'assistant') && (
+              <ThinkingMessage />
+            )}
 
           <div
             ref={messagesEndRef}

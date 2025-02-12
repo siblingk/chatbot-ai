@@ -343,6 +343,49 @@ export interface Database {
           },
         ];
       };
+      ai_settings: {
+        Row: {
+          id: string;
+          user_id: string;
+          nivel_tono: number;
+          nivel_tecnico: number;
+          longitud_respuesta: number;
+          nivel_urgencia: boolean;
+          sensibilidad_precio: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          nivel_tono?: number;
+          nivel_tecnico?: number;
+          longitud_respuesta?: number;
+          nivel_urgencia?: boolean;
+          sensibilidad_precio?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          nivel_tono?: number;
+          nivel_tecnico?: number;
+          longitud_respuesta?: number;
+          nivel_urgencia?: boolean;
+          sensibilidad_precio?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: 'ai_settings_user_id_fkey';
+            columns: ['user_id'];
+            referencedRelation: 'users';
+            referencedColumns: ['id'];
+          },
+        ];
+      };
     };
     Views: {
       [_ in never]: never;

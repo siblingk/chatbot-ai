@@ -96,76 +96,71 @@ export function PromptsList({ initialPrompts, onEdit }: PromptsListProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
+      <div className="flex items-center justify-between">
+        <div>
+          <CardTitle>Mi Prompt Personalizado</CardTitle>
+          <CardDescription>
+            Personaliza y activa tu propio prompt para el chat
+          </CardDescription>
+        </div>
+        {!userPrompt && (
+          <Button
+            onClick={() =>
+              onEdit({
+                id: '',
+                name: '',
+                content: '',
+                is_default: false,
+                created_at: '',
+                updated_at: '',
+                user_id: currentUser,
+              })
+            }
+            size="sm"
+            className="gap-2"
+          >
+            <Plus className="size-4" />
+            <span>Crear Prompt</span>
+          </Button>
+        )}
+      </div>
+
+      {!userPrompt ? (
+        <div className="py-8 text-center text-muted-foreground">
+          No tienes un prompt personalizado. ¡Crea uno nuevo!
+        </div>
+      ) : (
+        <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Mi Prompt Personalizado</CardTitle>
-              <CardDescription>
-                Personaliza y activa tu propio prompt para el chat
-              </CardDescription>
+            <div className="space-y-1">
+              <h4 className="text-sm font-medium leading-none">
+                {userPrompt.name}
+                {userPrompt.is_default && (
+                  <span className="ml-2 text-xs text-muted-foreground">
+                    (Activo)
+                  </span>
+                )}
+              </h4>
+              <p className="text-sm text-muted-foreground">
+                {userPrompt.content}
+              </p>
             </div>
-            {!userPrompt && (
+            <div className="flex items-center gap-2">
+              <Switch
+                checked={userPrompt.is_default}
+                onCheckedChange={() => handleToggleDefault(userPrompt)}
+              />
               <Button
-                onClick={() =>
-                  onEdit({
-                    id: '',
-                    name: '',
-                    content: '',
-                    is_default: false,
-                    created_at: '',
-                    updated_at: '',
-                    user_id: currentUser,
-                  })
-                }
+                variant="ghost"
                 size="sm"
-                className="gap-2"
+                onClick={() => onEdit(userPrompt)}
               >
-                <Plus className="size-4" />
-                <span>Crear Prompt</span>
+                <Edit2 className="size-4" />
               </Button>
-            )}
+            </div>
           </div>
-        </CardHeader>
-        <CardContent>
-          {!userPrompt ? (
-            <div className="py-8 text-center text-muted-foreground">
-              No tienes un prompt personalizado. ¡Crea uno nuevo!
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h4 className="text-sm font-medium leading-none">
-                    {userPrompt.name}
-                    {userPrompt.is_default && (
-                      <span className="ml-2 text-xs text-muted-foreground">
-                        (Activo)
-                      </span>
-                    )}
-                  </h4>
-                  <p className="text-sm text-muted-foreground">
-                    {userPrompt.content}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={userPrompt.is_default}
-                    onCheckedChange={() => handleToggleDefault(userPrompt)}
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(userPrompt)}
-                  >
-                    <Edit2 className="size-4" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      )}
     </div>
   );
 }
