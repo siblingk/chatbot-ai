@@ -69,24 +69,31 @@ export async function POST(request: Request) {
 
     try {
       if (!chat) {
-        const chatTitle =
-          title ||
-          (await generateTitleFromUserMessage({
-            message: messages?.[messages.length - 1],
-          }));
+        const chatTitle = vehicleInfo
+          ? `${vehicleInfo.year} ${vehicleInfo.brand} ${vehicleInfo.model}`
+          : title ||
+            (await generateTitleFromUserMessage({
+              message: messages?.[messages.length - 1],
+            }));
 
         // Crear el chat con la información del vehículo
         const supabase = await createClient();
         const { data: newChat, error: createError } = await supabase
           .from('chats')
-          .insert({
-            id,
-            title: chatTitle,
-            user_id: user.id,
-            vehicle_brand: vehicleInfo?.brand || null,
-            vehicle_model: vehicleInfo?.model || null,
-            vehicle_year: vehicleInfo?.year || null,
-          })
+          .upsert(
+            {
+              id,
+              title: chatTitle,
+              user_id: user.id,
+              vehicle_brand: vehicleInfo?.brand || null,
+              vehicle_model: vehicleInfo?.model || null,
+              vehicle_year: vehicleInfo?.year || null,
+            },
+            {
+              onConflict: 'id',
+              ignoreDuplicates: false,
+            }
+          )
           .select()
           .single();
 
@@ -99,9 +106,6 @@ export async function POST(request: Request) {
             }),
             {
               status: 500,
-              headers: {
-                'Content-Type': 'application/json',
-              },
             }
           );
         }
@@ -112,10 +116,14 @@ export async function POST(request: Request) {
       } else if (title || vehicleInfo) {
         // Si el chat existe y se proporciona un título o información del vehículo, actualizarlo
         const supabase = await createClient();
+        const updatedTitle = vehicleInfo
+          ? `${vehicleInfo.year} ${vehicleInfo.brand} ${vehicleInfo.model}`
+          : title || chat.title;
+
         const { error: updateError } = await supabase
           .from('chats')
           .update({
-            title: title || chat.title,
+            title: updatedTitle,
             vehicle_brand: vehicleInfo?.brand || chat.vehicle_brand,
             vehicle_model: vehicleInfo?.model || chat.vehicle_model,
             vehicle_year: vehicleInfo?.year || chat.vehicle_year,
