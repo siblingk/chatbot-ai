@@ -1,21 +1,13 @@
-import { convertToCoreMessages, CoreMessage, StreamData, streamText } from 'ai';
-import { z } from 'zod';
+import { convertToCoreMessages, CoreMessage, streamText } from 'ai';
 import { TextEncoder } from 'util';
 
 import { customModel } from '@/ai';
 import { models } from '@/ai/models';
-import { getChatById, getDocumentById } from '@/db/cached-queries';
-import {
-  saveChat,
-  saveDocument,
-  saveMessages,
-  saveSuggestions,
-  deleteChatById,
-} from '@/db/mutations';
+import { getChatById } from '@/db/cached-queries';
+import { saveMessages, deleteChatById } from '@/db/mutations';
 import { createClient } from '@/lib/supabase/server';
 import { MessageRole } from '@/lib/supabase/types';
 import { generateUUID, getMostRecentUserMessage } from '@/lib/utils';
-import type { ChatTools } from '../types';
 
 import { generateTitleFromUserMessage } from '../../actions';
 
