@@ -6,12 +6,19 @@ import { Input } from '@/components/ui/input';
 import { processPDF, searchPDF } from '@/lib/pdf-loader';
 import { Document } from '@langchain/core/documents';
 import { Loader2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
+
+interface ChatResponse {
+  answer: string;
+  sources?: Document[];
+}
 
 export function PDFSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [isPdfProcessed, setIsPdfProcessed] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Document[]>([]);
+  const [response, setResponse] = useState<ChatResponse | null>(null);
   const [currentFileName, setCurrentFileName] = useState<string>('');
   const [error, setError] = useState<string>('');
 
@@ -20,7 +27,7 @@ export function PDFSearch() {
 
     setIsLoading(true);
     setError('');
-    setResults([]);
+    setResponse(null);
     setIsPdfProcessed(false);
 
     try {
@@ -44,8 +51,34 @@ export function PDFSearch() {
     setError('');
 
     try {
+      // Primero obtenemos los documentos relevantes
       const searchResults = await searchPDF(query);
-      setResults(searchResults);
+
+      // Luego enviamos la pregunta al endpoint de chat
+      const chatResponse = await fetch('/api/chat-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          query,
+          vectors: searchResults.map((doc) => ({
+            pageContent: doc.pageContent,
+            metadata: doc.metadata,
+          })),
+        }),
+      });
+
+      if (!chatResponse.ok) {
+        const errorData = await chatResponse.json();
+        throw new Error(errorData.error || 'Error al procesar la pregunta');
+      }
+
+      const data = await chatResponse.json();
+      setResponse({
+        answer: data.answer,
+        sources: searchResults,
+      });
     } catch (error) {
       console.error('Error searching PDF:', error);
       setError('Error al buscar en el PDF. Por favor, intenta de nuevo.');
@@ -80,7 +113,7 @@ export function PDFSearch() {
       <form onSubmit={handleSearch} className="space-y-2">
         <Input
           type="text"
-          placeholder="Escribe tu pregunta sobre el PDF..."
+          placeholder="Hazme una pregunta sobre el contenido del PDF..."
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           disabled={!isPdfProcessed || isLoading}
@@ -91,23 +124,40 @@ export function PDFSearch() {
           className="w-full"
         >
           {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-          Buscar
+          Preguntar
         </Button>
       </form>
 
-      {results.length > 0 && (
+      {response && (
         <div className="space-y-4">
-          <h3 className="text-lg font-semibold">Resultados:</h3>
-          {results.map((doc, index) => (
-            <div key={index} className="p-4 border rounded-lg bg-background/50">
-              <p className="whitespace-pre-wrap">{doc.pageContent}</p>
-              {doc.metadata?.loc?.pageNumber && (
-                <p className="text-sm text-muted-foreground mt-2">
-                  Página: {doc.metadata.loc.pageNumber}
-                </p>
-              )}
+          <Card className="p-4">
+            <h3 className="text-lg font-semibold mb-2">Respuesta:</h3>
+            <div className="prose prose-sm max-w-none">
+              <p className="whitespace-pre-wrap">{response.answer}</p>
             </div>
-          ))}
+          </Card>
+
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground">
+              Fuentes relevantes:
+            </h4>
+            {response.sources?.map((doc, index) => (
+              <Card
+                key={index}
+                className={cn(
+                  'p-3 text-sm bg-muted/50',
+                  'hover:bg-muted/70 transition-colors'
+                )}
+              >
+                <p className="whitespace-pre-wrap">{doc.pageContent}</p>
+                {doc.metadata?.loc?.pageNumber && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Página: {doc.metadata.loc.pageNumber}
+                  </p>
+                )}
+              </Card>
+            ))}
+          </div>
         </div>
       )}
     </div>
