@@ -3,17 +3,12 @@ import useSWR, { mutate } from 'swr';
 interface UserProfile {
   id: string;
   email: string;
-  nombre: string | null;
-  telefono: string | null;
-  ubicacion: string | null;
   created_at: string;
   updated_at: string;
 }
 
 interface UpdateUserProfileData {
-  nombre?: string;
-  telefono?: string;
-  ubicacion?: string;
+  // Empty interface as we don't have updateable fields right now
 }
 
 const fetcher = async (url: string) => {

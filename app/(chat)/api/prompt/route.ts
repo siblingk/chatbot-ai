@@ -34,20 +34,8 @@ export async function GET() {
       user_id: null,
     };
 
-    // Construir el prompt base con la información del usuario
+    // Usar el prompt base directamente
     let basePrompt = systemPrompt.content;
-
-    if (userProfile) {
-      // Agregar información del usuario al contexto del prompt
-      basePrompt = `${basePrompt}
-
-INFORMACIÓN DEL USUARIO ACTUAL:
-- Nombre: ${userProfile.nombre || 'No especificado'}
-- Teléfono: ${userProfile.telefono || 'No especificado'}
-- Ubicación: ${userProfile.ubicacion || 'No especificada'}
-
-Usa esta información para personalizar tus respuestas.`;
-    }
 
     // Obtener el prompt personalizado del usuario
     const { data: userPrompts, error: userPromptError } = await supabase

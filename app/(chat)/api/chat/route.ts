@@ -170,18 +170,8 @@ export async function POST(request: Request) {
       messages: [formattedUserMessage],
     });
 
-    // Construir el prompt del sistema con la información del usuario
+    // Usar el system prompt directamente sin información del usuario
     let finalSystemPrompt = systemPrompt || '';
-    if (userProfile?.nombre) {
-      finalSystemPrompt = `${finalSystemPrompt}
-
-USER INFORMATION:
-- Name: ${userProfile.nombre}
-${userProfile.ubicacion ? `- Location: ${userProfile.ubicacion}` : ''}
-${userProfile.telefono ? `- Phone: ends in ${userProfile.telefono.slice(-2)}` : ''}
-
-Use this information to personalize your responses and refer to the user by name.`;
-    }
 
     const responseMessageId = generateUUID();
     let fullContent = '';
