@@ -1,15 +1,7 @@
 import { motion } from 'framer-motion';
 import { Car } from 'lucide-react';
 
-interface OverviewProps {
-  vehicleInfo?: {
-    brand: string;
-    model: string;
-    year: string;
-  };
-}
-
-export const Overview = ({ vehicleInfo }: OverviewProps) => {
+export const Overview = () => {
   return (
     <motion.div
       key="overview"
@@ -25,29 +17,18 @@ export const Overview = ({ vehicleInfo }: OverviewProps) => {
         </p>
         <div className="space-y-4">
           <h2 className="text-2xl font-bold">
-            Hi! I&apos;m your automotive expert assistant
+            ¡Hola! Soy tu asistente experto automotriz
           </h2>
           <p className="text-muted-foreground">
-            {vehicleInfo ? (
-              <>
-                I see you have a {vehicleInfo.year} {vehicleInfo.brand}{' '}
-                {vehicleInfo.model}. How can I assist you with your vehicle
-                today?
-              </>
-            ) : (
-              <>
-                I notice you&apos;re looking for help with your vehicle. Tell me
-                more about the issue you&apos;re experiencing, and I&apos;ll
-                help you find a quick solution.
-              </>
-            )}
+            Cuéntame más sobre el problema que estás experimentando y te ayudaré
+            a encontrar una solución rápida.
           </p>
-          <p className="text-sm text-muted-foreground">I can help you with:</p>
+          <p className="text-sm text-muted-foreground">Te puedo ayudar con:</p>
           <ul className="mx-auto list-inside list-disc space-y-2 text-left text-muted-foreground">
-            <li>Diagnosing vehicle problems</li>
-            <li>Maintenance recommendations</li>
-            <li>Finding the right repair shop</li>
-            <li>Cost estimates for repairs</li>
+            <li>Diagnóstico de problemas del vehículo</li>
+            <li>Recomendaciones de mantenimiento</li>
+            <li>Encontrar el taller adecuado</li>
+            <li>Estimaciones de costos de reparación</li>
           </ul>
         </div>
       </div>

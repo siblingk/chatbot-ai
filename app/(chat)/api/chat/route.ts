@@ -39,15 +39,7 @@ function formatMessageContent(message: CoreMessage): string {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const {
-      id,
-      messages,
-      modelId,
-      systemPrompt,
-      userProfile,
-      title,
-      vehicleInfo,
-    } = body;
+    const { id, messages, modelId, systemPrompt, userProfile, title } = body;
 
     if (!id) {
       console.error('Missing chat ID');
@@ -61,14 +53,13 @@ export async function POST(request: Request) {
 
     try {
       if (!chat) {
-        const chatTitle = vehicleInfo
-          ? `${vehicleInfo.year} ${vehicleInfo.brand} ${vehicleInfo.model}`
-          : title ||
-            (await generateTitleFromUserMessage({
-              message: messages?.[messages.length - 1],
-            }));
+        const chatTitle =
+          title ||
+          (await generateTitleFromUserMessage({
+            message: messages?.[messages.length - 1],
+          }));
 
-        // Crear el chat con la información del vehículo
+        // Crear el chat
         const supabase = await createClient();
         const { data: newChat, error: createError } = await supabase
           .from('chats')
@@ -77,9 +68,6 @@ export async function POST(request: Request) {
               id,
               title: chatTitle,
               user_id: user.id,
-              vehicle_brand: vehicleInfo?.brand || null,
-              vehicle_model: vehicleInfo?.model || null,
-              vehicle_year: vehicleInfo?.year || null,
             },
             {
               onConflict: 'id',
@@ -103,22 +91,13 @@ export async function POST(request: Request) {
         }
 
         console.log('Chat created successfully:', newChat);
-      } else if (chat.user_id !== user.id) {
-        return new Response('Unauthorized', { status: 401 });
-      } else if (title || vehicleInfo) {
-        // Si el chat existe y se proporciona un título o información del vehículo, actualizarlo
+      } else if (title) {
+        // Si el chat existe y se proporciona un título, actualizarlo
         const supabase = await createClient();
-        const updatedTitle = vehicleInfo
-          ? `${vehicleInfo.year} ${vehicleInfo.brand} ${vehicleInfo.model}`
-          : title || chat.title;
-
         const { error: updateError } = await supabase
           .from('chats')
           .update({
-            title: updatedTitle,
-            vehicle_brand: vehicleInfo?.brand || chat.vehicle_brand,
-            vehicle_model: vehicleInfo?.model || chat.vehicle_model,
-            vehicle_year: vehicleInfo?.year || chat.vehicle_year,
+            title,
           })
           .eq('id', id);
 
@@ -191,7 +170,7 @@ export async function POST(request: Request) {
       messages: [formattedUserMessage],
     });
 
-    // Construir el prompt del sistema con la información del usuario y vehículo
+    // Construir el prompt del sistema con la información del usuario
     let finalSystemPrompt = systemPrompt || '';
     if (userProfile?.nombre) {
       finalSystemPrompt = `${finalSystemPrompt}
@@ -201,17 +180,7 @@ USER INFORMATION:
 ${userProfile.ubicacion ? `- Location: ${userProfile.ubicacion}` : ''}
 ${userProfile.telefono ? `- Phone: ends in ${userProfile.telefono.slice(-2)}` : ''}
 
-${
-  vehicleInfo
-    ? `VEHICLE INFORMATION:
-- Brand: ${vehicleInfo.brand}
-- Model: ${vehicleInfo.model}
-- Year: ${vehicleInfo.year}`
-    : ''
-}
-
-Use this information to personalize your responses and refer to the user by name.
-When mentioning the vehicle, use its complete information (brand, model, and year).`;
+Use this information to personalize your responses and refer to the user by name.`;
     }
 
     const responseMessageId = generateUUID();
