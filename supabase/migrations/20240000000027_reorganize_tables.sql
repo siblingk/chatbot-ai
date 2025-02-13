@@ -2,48 +2,12 @@
 drop table if exists public.user_settings cascade;
 drop table if exists public.user_info cascade;
 drop table if exists public.chat_settings cascade;
+drop table if exists public.ai_settings cascade;
 
--- Modificar la tabla users para incluir información personal
-alter table public.users add column if not exists nombre text;
-alter table public.users add column if not exists telefono text;
-alter table public.users add column if not exists ubicacion text;
-
--- Crear tabla para configuraciones de IA
-create table if not exists public.ai_settings (
-    id uuid primary key default gen_random_uuid(),
-    user_id uuid references public.users(id) on delete cascade unique,
-    
-    -- Configuraciones de IA
-    nivel_tono integer default 3 check (nivel_tono between 1 and 5),
-    nivel_tecnico integer default 3 check (nivel_tecnico between 1 and 5),
-    longitud_respuesta integer default 3 check (longitud_respuesta between 1 and 5),
-    nivel_urgencia boolean default false,
-    sensibilidad_precio integer default 3 check (sensibilidad_precio between 1 and 5),
-    
-    created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-    updated_at timestamp with time zone default timezone('utc'::text, now()) not null
-);
-
--- Trigger para updated_at en ai_settings
-create trigger handle_ai_settings_updated_at
-    before update on public.ai_settings
-    for each row
-    execute function public.handle_updated_at();
-
--- RLS para ai_settings
-alter table public.ai_settings enable row level security;
-
-create policy "Users can view their own AI settings"
-    on public.ai_settings for select
-    using (auth.uid() = user_id);
-
-create policy "Users can update their own AI settings"
-    on public.ai_settings for update
-    using (auth.uid() = user_id);
-
-create policy "Users can insert their own AI settings"
-    on public.ai_settings for insert
-    with check (auth.uid() = user_id);
+-- Modificar la tabla users para mantener solo lo esencial
+alter table public.users drop column if exists nombre;
+alter table public.users drop column if exists telefono;
+alter table public.users drop column if exists ubicacion;
 
 -- Función para obtener información del usuario
 create or replace function public.get_user_profile()
@@ -58,9 +22,6 @@ begin
     select jsonb_build_object(
         'id', u.id,
         'email', u.email,
-        'nombre', u.nombre,
-        'telefono', u.telefono,
-        'ubicacion', u.ubicacion,
         'created_at', u.created_at,
         'updated_at', u.updated_at
     )
@@ -85,17 +46,11 @@ declare
 begin
     update public.users
     set
-        nombre = coalesce((p_data->>'nombre')::text, nombre),
-        telefono = coalesce((p_data->>'telefono')::text, telefono),
-        ubicacion = coalesce((p_data->>'ubicacion')::text, ubicacion),
         updated_at = now()
     where id = auth.uid()
     returning jsonb_build_object(
         'id', id,
         'email', email,
-        'nombre', nombre,
-        'telefono', telefono,
-        'ubicacion', ubicacion,
         'created_at', created_at,
         'updated_at', updated_at
     ) into updated_record;

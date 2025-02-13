@@ -792,7 +792,6 @@ export interface StorageError {
 }
 
 export type User = Database['public']['Tables']['users']['Row'];
-export type UserSettings = Database['public']['Tables']['user_settings']['Row'];
 export type UserInfo = Database['public']['Tables']['user_info']['Row'];
 export type UserSettingsResponse =
   Database['public']['Functions']['get_user_settings']['Returns'][0];
@@ -802,11 +801,6 @@ export type UserInfoResponse =
 export interface AISettings {
   id: string;
   user_id: string;
-  nivel_tono: number;
-  nivel_tecnico: number;
-  longitud_respuesta: number;
-  nivel_urgencia: boolean;
-  sensibilidad_precio: number;
   created_at: string;
   updated_at: string;
 }
